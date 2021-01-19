@@ -2,7 +2,7 @@
 title: "ESM 263 Assignment 1: Cartography"
 author: "Linus Blomqvist"
 date: "1/19/2021"
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -21,9 +21,6 @@ library(scales)
 library(tictoc)
 library(RColorBrewer)
 ```
-
-
-# Task 3: Design a map
 
 First we'll load the data. The `sf` function `st_read` understands what format the file is so it needs no further specification.
 
@@ -48,10 +45,12 @@ For this assignment, I don't think we need to project the sf object, but we woul
 I will map the greenhouse gas emissions variable. Before I do so, I'll do some sanity checks, starting with a histogram.
 
 ```{r histogram, message = FALSE}
-ggplot(hw1, aes(GGAS_EMS98)) +
-  geom_histogram() +
-  labs(title = "Histogram of greenhouse gas emissions by country", x = "GHG emissions (million metric tons)", y = "Count") +
-  theme(plot.title = element_text(hjust = 0.5))
+hw1 %>%
+  ggplot(aes(GGAS_EMS98)) +
+    geom_histogram() +
+    labs(title = "Greenhouse gas emissions by country",
+         x = "GHG emissions (million metric tons)", y = "Count") +
+    theme(plot.title = element_text(hjust = 0.5))
 ```
 
 There are `r sum(hw1$GGAS_EMS98 < 0)` values below zero and they are all -99.
@@ -59,7 +58,7 @@ There are `r sum(hw1$GGAS_EMS98 < 0)` values below zero and they are all -99.
 ```{r}
 hw1 %>%
   filter(GGAS_EMS98 < 0) %$%
-  unique(GGAS_EMS98)
+  unique(GGAS_EMS98) # unique values less than 0
 ```
 
 According to the documentation, this means there's no data. This is better represented with `NA`, so I'll change that. I'll make a new variable just to preserve the original.
@@ -77,51 +76,35 @@ hw1 %>%
   CNTRY_NAME
 ```
 
-Not surprising. Now we can start building the map. I'll make one with all the `tmap` defaults and omit the legend just to get a picture of what we have and what the map needs to look like.
+Not surprising. Now we can start building the map. I'll make one with all the `tmap` defaults just to get a picture of what we have and what the map needs to look like.
 
 ```{r}
 tm_shape(hw1) +
   tm_polygons("ggas")
 ```
 
-The first thing to notice is that, 
+Two things to note. First, we want what is referred to as sequential palette by the package `RColorBrewer`. I chose one where the color goes from yellow to brown. This seems appropriate for pollution. Second, the data are really skewed, so the map will be easier to read if plotted on a log scale.
 
-__Considerations/choices:__
-
-* We want what is referred to as sequential palette by the package `RColorBrewer`
-* The data are really skewed, so the map will be easier to read if plotted on a log scale.
-* Put the legend outside
-* Drop the frame
-* Add in acknowledgments etc
-* Reformat the legend values from log to linear
-* Specify units
+I'm also including a definition and credits at the bottom.
 
 ```{r map, message = FALSE, warning = FALSE}
 tm_shape(hw1) +
   tm_polygons(col = "GGAS_EMS98",
               style = "log10",
-              title = "",
+              title = "Million metric tons",
               palette = "YlOrBr",
-              breaks = c(0,1,2,3, log10(1500))) +
-  tm_layout(main.title = "Greenhouse gas emissions (million metric tons)",
+              breaks = c(0,1,2,3, log10(1500)))+
+  tm_layout(main.title = "Greenhouse gas emissions by country",
             main.title.position = c("center", "TOP"),
             main.title.size = 1.2,
             legend.position = c(0.02, 0.15),
             legend.title.size = 0.9,
             legend.text.size = 0.7,
-            legend.bg.color = "azure2",
-            bg.color = "azure2") +
+            legend.bg.color = "white",
+            legend.frame = TRUE,
+            bg.color = "azure1") +
   tm_credits("The values refer to total greenhouse gases in millions of metric tons released into the atmosphere from coal, natural gas, and petroleum energy use. \n Source: Energy Information Administration, U.S. Department of Energy, 1998 estimate. (Source: CountryWatch.com)",
              position = c("center", "bottom"),
-             bg.color = "azure2")
+             bg.color = "white")
 ```
-
-
-
-
-```{r}
-
-              # 
-```
-
 
