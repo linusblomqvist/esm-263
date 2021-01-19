@@ -19,6 +19,7 @@ library(magrittr)
 library(bookdown)
 library(scales)
 library(tictoc)
+library(RColorBrewer)
 ```
 
 
@@ -29,8 +30,98 @@ First we'll load the data. The `sf` function `st_read` understands what format t
 ```{r load_data}
 hw1 <- st_read("data/HW1/HW1.gpkg", layer = "CountryWatch")
 ```
+
+We can verify that we now have an `sf` object:
+
+```{r}
+class(hw1)
+```
+
 It's a good idea to check if the data is projected, which it is not. `TRUE` here means that it is in long/lat form, which is not projected.
+
 ```{r inspect_data}
 st_is_longlat(hw1)
 ```
+
+For this assignment, I don't think we need to project the sf object, but we would need to do that if we wanted to calculate things like area.
+
+I will map the greenhouse gas emissions variable. Before I do so, I'll do some sanity checks, starting with a histogram.
+
+```{r histogram, message = FALSE}
+ggplot(hw1, aes(GGAS_EMS98)) +
+  geom_histogram() +
+  labs(title = "Histogram of greenhouse gas emissions by country", x = "GHG emissions (million metric tons)", y = "Count") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+There are `r sum(hw1$GGAS_EMS98 < 0)` values below zero and they are all -99.
+
+```{r}
+hw1 %>%
+  filter(GGAS_EMS98 < 0) %$%
+  unique(GGAS_EMS98)
+```
+
+According to the documentation, this means there's no data. This is better represented with `NA`, so I'll change that. I'll make a new variable just to preserve the original.
+
+```{r}
+hw1$ggas <- hw1$GGAS_EMS98
+hw1$ggas[hw1$ggas < 0] <- NA
+```
+
+I'm also curious which countries have the extremely large emissions.
+
+```{r}
+hw1 %>%
+  filter(ggas > 300) %$%
+  CNTRY_NAME
+```
+
+Not surprising. Now we can start building the map. I'll make one with all the `tmap` defaults and omit the legend just to get a picture of what we have and what the map needs to look like.
+
+```{r}
+tm_shape(hw1) +
+  tm_polygons("ggas")
+```
+
+The first thing to notice is that, 
+
+__Considerations/choices:__
+
+* We want what is referred to as sequential palette by the package `RColorBrewer`
+* The data are really skewed, so the map will be easier to read if plotted on a log scale.
+* Put the legend outside
+* Drop the frame
+* Add in acknowledgments etc
+* Reformat the legend values from log to linear
+* Specify units
+
+```{r map, message = FALSE, warning = FALSE}
+tm_shape(hw1) +
+  tm_polygons(col = "GGAS_EMS98",
+              style = "log10",
+              title = "",
+              palette = "YlOrBr",
+              breaks = c(0,1,2,3, log10(1500))) +
+  tm_layout(main.title = "Greenhouse gas emissions (million metric tons)",
+            main.title.position = c("center", "TOP"),
+            main.title.size = 1.2,
+            legend.position = c(0.02, 0.15),
+            legend.title.size = 0.9,
+            legend.text.size = 0.7,
+            legend.bg.color = "azure2",
+            bg.color = "azure2") +
+  tm_credits("The values refer to total greenhouse gases in millions of metric tons released into the atmosphere from coal, natural gas, and petroleum energy use. \n Source: Energy Information Administration, U.S. Department of Energy, 1998 estimate. (Source: CountryWatch.com)",
+             position = c("center", "bottom"),
+             bg.color = "azure2")
+```
+
+
+
+
+```{r}
+
+              # 
+```
+
 
