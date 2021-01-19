@@ -1,0 +1,36 @@
+---
+title: "ESM 263 Assignment 1: Cartography"
+author: "Linus Blomqvist"
+date: "1/19/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r packages, message = FALSE, echo = FALSE}
+library(knitr)
+library(tidyverse)
+library(sf)
+library(units)
+library(tmap)
+library(magrittr)
+library(bookdown)
+library(scales)
+library(tictoc)
+```
+
+
+# Task 3: Design a map
+
+First we'll load the data. The `sf` function `st_read` understands what format the file is so it needs no further specification.
+
+```{r load_data}
+hw1 <- st_read("data/HW1/HW1.gpkg", layer = "CountryWatch")
+```
+It's a good idea to check if the data is projected, which it is not. `TRUE` here means that it is in long/lat form, which is not projected.
+```{r inspect_data}
+st_is_longlat(hw1)
+```
+
