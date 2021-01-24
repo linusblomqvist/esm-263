@@ -1,0 +1,29 @@
+---
+title: "ESM 263 HW2"
+author: "Linus Blomqvist"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r packages, echo = FALSE, message = FALSE}
+library(knitr)
+library(tidyverse)
+library(sf)
+library(units)
+library(tmap)
+library(magrittr)
+library(bookdown)
+library(scales)
+library(tictoc)
+library(RColorBrewer)
+```
+
+# Load data
+```{r}
+basemap <- st_read()
+```
+
