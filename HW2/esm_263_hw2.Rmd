@@ -83,33 +83,23 @@ ggplot(parcels) +
 
 Seems like most parcels are valued at just under a million dollars, but some are worth tens of millions of dollars.
 
-I'll write a script to make the reading in of the `r length(st_layers("HW2/data_hw2/inundation_scenarios.gpkg")$name)` inundation layers more efficient. I'll also save those object in a single list.
+For the inundation scenarios, I combine all the layers into a single `sf` object.
 
 ```{r read2}
-
-# Get a list of the layer names
+# Get layer names
 inund_layers <- st_layers("HW2/data_hw2/inundation_scenarios.gpkg")$name
 
-# Read in all individual layers into a single list
-inund <- list() # make empty list
-for (i in inund_layers) { # loop over each layer
-  inund[[i]] <- st_read("HW2/data_hw2/inundation_scenarios.gpkg", layer = i)
+# Start with one layer and then row bind the others onto it with a loop
+scenarios <- st_read("HW2/data_hw2/inundation_scenarios.gpkg", layer = inund_layers[1])
+for(i in 2:length(inund_layers)) {
+  scenarios <- rbind(scenarios, st_read("HW2/data_hw2/inundation_scenarios.gpkg", layer = inund_layers[i]))
 }
-
-# Concatenate "inund scenario" with the layer/scenario number
-scenario_names <- c()
-for (i in 1:length(inund_layers)) {
-  scenario_names[i] <- str_c("scenario", inund_layers[i], collapse = "")
-}
-
-# Now rename the elements of the list
-names(inund) <- scenario_names
 ```
 
 Now we can access a scenario like 01 with `inund$scenario01`. Let's look at one of these scenarios:
 
 ```{r}
-tm_shape(st_geometry(inund$scenario10)) +
+tm_shape(st_geometry(filter(scenarios, GRIDCODE == 10))) +
     tm_fill(col = "lightblue")
 ```
 
@@ -117,8 +107,3 @@ Seems like this represents current land area that would be inundated under the s
 
 # Spatial join
 What we want here is the total value of all parcels that fall within the inundated area for each scenario.
-
-```{r}
-
-```
-
