@@ -23,7 +23,68 @@ library(RColorBrewer)
 ```
 
 # Load data
+
+Check what layers are in the basemap.
 ```{r}
-basemap <- st_read()
+st_layers("HW2/data_hw2/basemap.gpkg")$name
 ```
+
+I'll include code for reading in the first layer; for the other layers, the code will not show (but it's there under the hood).
+
+```{r read_data, message=TRUE, warning=FALSE}
+california <- st_read("HW2/data_hw2/basemap.gpkg", layer = "California")
+```
+For this and any other layers we can do a little exploring. For example, we can check the variable names:
+
+```{r}
+names(california)
+```
+
+Note that in an `sf` object, there's always a column at the end called `geom`; this contains all the spatial information.
+
+We can also do a quick plot:
+
+```{r}
+tm_shape(california) +
+  tm_polygons()
+```
+
+
+```{r read2, include = FALSE}
+cities <- st_read("HW2/data_hw2/basemap.gpkg", layer = "Cities")
+county <- st_read("HW2/data_hw2/basemap.gpkg", layer = "County")
+ROI <- st_read("HW2/data_hw2/basemap.gpkg", layer = "ROI")
+streets <- st_read("HW2/data_hw2/basemap.gpkg", layer = "streets")
+```
+
+There's only one layer, "`r st_layers("HW2/data_hw2/parcels.gpkg")$name`", in the parcels file so we'll read that in.
+
+```{r}
+parcels <- st_read("HW2/data_hw2/parcels.gpkg")
+```
+
+I'll write a script to make the reading in of the `r length(st_layers("HW2/data_hw2/inundation_scenarios.gpkg")$name)` inundation layers more efficient. I'll also save those object in a single list.
+
+```{r read2}
+
+# Get a list of the layer names
+inund_layers <- st_layers("HW2/data_hw2/inundation_scenarios.gpkg")$name
+
+# Read in all individual layers into a single list
+inund <- list() # make empty list
+for (i in inund_layers) { # loop over each layer
+  inund[[i]] <- st_read("HW2/data_hw2/inundation_scenarios.gpkg", layer = i)
+}
+
+# Concatenate "inund scenario" with the layer/scenario number
+scenario_names <- c()
+for (i in 1:length(inund_layers)) {
+  scenario_names[i] <- str_c("scenario", inund_layers[i], collapse = "")
+}
+
+# Now rename the elements of the list
+names(inund) <- scenario_names
+```
+
+Now we can access a scenario like 01 with `inund$scenario01`.
 
