@@ -22,7 +22,7 @@ library(tictoc)
 library(RColorBrewer)
 ```
 
-# Load data
+# Loading and exploring data
 
 Check what layers are in the basemap.
 ```{r}
@@ -42,26 +42,46 @@ names(california)
 
 Note that in an `sf` object, there's always a column at the end called `geom`; this contains all the spatial information.
 
-We can also do a quick plot:
+We can also do a quick plot to see what we have. Looks like counties.
 
 ```{r}
-tm_shape(california) +
+tm_shape(st_geometry(california)) +
   tm_polygons()
 ```
 
-
 ```{r read2, include = FALSE}
+
+# Reading the rest of the layers
 cities <- st_read("HW2/data_hw2/basemap.gpkg", layer = "Cities")
 county <- st_read("HW2/data_hw2/basemap.gpkg", layer = "County")
 ROI <- st_read("HW2/data_hw2/basemap.gpkg", layer = "ROI")
 streets <- st_read("HW2/data_hw2/basemap.gpkg", layer = "streets")
 ```
 
-There's only one layer, "`r st_layers("HW2/data_hw2/parcels.gpkg")$name`", in the parcels file so we'll read that in.
+I'm also interested to see the ROI (region of interest). In the html version of this file, you'll be able to see this against a base layer and zoom around etc, as the map view mode is interactive. We can see that we're only interested in what looks like the downtown area including the harbor.
+
+```{r}
+tmap_mode("view")
+tm_shape(st_geometry(ROI)) +
+  tm_borders()
+```
+
+There's only one layer, "`r st_layers("HW2/data_hw2/parcels.gpkg")$name`", in the parcels file so we'll read that in. We can check the variables names here too.
 
 ```{r}
 parcels <- st_read("HW2/data_hw2/parcels.gpkg")
+names(parcels)
 ```
+The variable we're interested in is `NET_AV`, so we can check what that looks like (on a log 10 scale to make it easier to read).
+
+```{r hist, message = FALSE, warning = FALSE}
+ggplot(parcels) +
+  geom_histogram(aes(x = NET_AV)) +
+  scale_x_log10() +
+  xlab("Net assessed value")
+```
+
+Seems like most parcels are valued at just under a million dollars, but some are worth tens of millions of dollars.
 
 I'll write a script to make the reading in of the `r length(st_layers("HW2/data_hw2/inundation_scenarios.gpkg")$name)` inundation layers more efficient. I'll also save those object in a single list.
 
@@ -86,5 +106,19 @@ for (i in 1:length(inund_layers)) {
 names(inund) <- scenario_names
 ```
 
-Now we can access a scenario like 01 with `inund$scenario01`.
+Now we can access a scenario like 01 with `inund$scenario01`. Let's look at one of these scenarios:
+
+```{r}
+tm_shape(st_geometry(inund$scenario10)) +
+    tm_fill(col = "lightblue")
+```
+
+Seems like this represents current land area that would be inundated under the scenario in question.
+
+# Spatial join
+What we want here is the total value of all parcels that fall within the inundated area for each scenario.
+
+```{r}
+
+```
 
