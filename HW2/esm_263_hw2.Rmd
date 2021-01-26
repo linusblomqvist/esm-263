@@ -23,7 +23,7 @@ library(RColorBrewer)
 library(kableExtra)
 ```
 
-## Loading and exploring data
+### Loading and exploring data
 
 Check what layers are in the basemap:
 
@@ -105,7 +105,7 @@ tm_shape(st_geometry(filter(scenarios, GRIDCODE == 10))) +
 
 Seems like this represents current land area that would be inundated under the scenario in question.
 
-## Spatial join
+### Spatial join
 What we want here is the total value of all parcels that fall within the inundated area for each scenario.
 
 ```{r spatial_join}
@@ -126,7 +126,7 @@ scenarios <- scenarios %>%
 names(scenarios)[1] <- "scenario"
 ```
 
-## Results: table
+### Results: table
 Now we can turn this into a table.
 
 ```{r}
@@ -136,9 +136,9 @@ st_drop_geometry(scenarios) %>%
 ```
 
 
-## Results: map
+### Results: map
 
-In the map, the numbers 1 through 10 represent the number of meters of sea-level rise associated with each scenario.
+In the map, the numbers 1 through 10 represent the number of meters of sea-level rise associated with each scenario and the intensity of the color represents the amount of property value lost.
 
 ```{r map2, message = FALSE}
 tmap_mode("plot")
