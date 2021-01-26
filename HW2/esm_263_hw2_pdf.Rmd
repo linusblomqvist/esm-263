@@ -27,6 +27,8 @@ library(OpenStreetMap)
 library(tmaptools)
 ```
 
+The .Rmd files with the code, and the html file with interactive maps in the output can both be found in my GitHub repo [here](https://github.com/linusblomqvist/esm-263/tree/main/HW2).
+
 ### Loading and exploring data
 
 Check what layers are in the basemap:
