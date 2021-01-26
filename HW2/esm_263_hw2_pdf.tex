@@ -1,0 +1,369 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\hypersetup{
+  pdftitle={ESM 263 HW2},
+  pdfauthor={Linus Blomqvist},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+\urlstyle{same} % disable monospaced font for URLs
+\usepackage[margin=1in]{geometry}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.77,0.63,0.00}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx,grffile}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{setspace}\doublespacing
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage{float}
+\usepackage{colortbl}
+\usepackage{pdflscape}
+\usepackage{tabu}
+\usepackage{threeparttable}
+\usepackage{threeparttablex}
+\usepackage[normalem]{ulem}
+\usepackage{makecell}
+\usepackage{xcolor}
+
+\title{ESM 263 HW2}
+\author{Linus Blomqvist}
+\date{2021-01-26}
+
+\begin{document}
+\maketitle
+
+\hypertarget{loading-and-exploring-data}{%
+\subsubsection{Loading and exploring
+data}\label{loading-and-exploring-data}}
+
+Check what layers are in the basemap:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{st_layers}\NormalTok{(}\StringTok{"HW2/data_hw2/basemap.gpkg"}\NormalTok{)}\OperatorTok{$}\NormalTok{name}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "California" "Cities"     "County"     "ROI"        "Streets"
+\end{verbatim}
+
+Read them in:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{california <-}\StringTok{ }\KeywordTok{read_sf}\NormalTok{(}\StringTok{"HW2/data_hw2/basemap.gpkg"}\NormalTok{, }\DataTypeTok{layer =} \StringTok{"California"}\NormalTok{)}
+\NormalTok{cities <-}\StringTok{ }\KeywordTok{read_sf}\NormalTok{(}\StringTok{"HW2/data_hw2/basemap.gpkg"}\NormalTok{, }\DataTypeTok{layer =} \StringTok{"Cities"}\NormalTok{)}
+\NormalTok{county <-}\StringTok{ }\KeywordTok{read_sf}\NormalTok{(}\StringTok{"HW2/data_hw2/basemap.gpkg"}\NormalTok{, }\DataTypeTok{layer =} \StringTok{"County"}\NormalTok{)}
+\NormalTok{ROI <-}\StringTok{ }\KeywordTok{read_sf}\NormalTok{(}\StringTok{"HW2/data_hw2/basemap.gpkg"}\NormalTok{, }\DataTypeTok{layer =} \StringTok{"ROI"}\NormalTok{)}
+\NormalTok{streets <-}\StringTok{ }\KeywordTok{read_sf}\NormalTok{(}\StringTok{"HW2/data_hw2/basemap.gpkg"}\NormalTok{, }\DataTypeTok{layer =} \StringTok{"streets"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+For this and any other layers we can do a little exploring. For example,
+we can check the variable names:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{names}\NormalTok{(california)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##  [1] "OBJECTID"     "NAME_PCASE"   "NAME_UCASE"   "FMNAME_PC"    "FMNAME_UC"   
+##  [6] "ABBREV"       "NUM"          "ABCODE"       "FIPS"         "ANSI"        
+## [11] "ISLAND"       "Shape_Leng"   "Shape_Length" "Shape_Area"   "geom"
+\end{verbatim}
+
+Note that in an \texttt{sf} object, there's always a column at the end
+called \texttt{geom}; this contains all the spatial information.
+
+We can also do a quick plot to see what we have in the
+\texttt{california} shape. Looks like counties.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{tm_shape}\NormalTok{(}\KeywordTok{st_geometry}\NormalTok{(california)) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{tm_polygons}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{esm_263_hw2_pdf_files/figure-latex/map_CA-1.pdf}
+
+I'm also interested to see the ROI (region of interest). In the html
+version of this file, you'll be able to see this against a base layer
+and zoom around etc, as the map view mode is interactive, but in the pdf
+version, it's a static map. We can see that we're only interested in
+what looks like the downtown area including the harbor.
+
+For the static map, I use the \texttt{read\_osm} function, where osm
+stands for Open Street Map, to create a base layer. This requires a
+bounding box which is represented by the Santa Barbara city feature.
+This is a multipolygon with two parts, the actual city, and the airport,
+so I turn it into a polygon with two separate features, and select the
+second one, Santa Barbara proper.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Create feature for bounding box and read Open Street Map layer}
+\NormalTok{sb <-}\StringTok{ }\KeywordTok{st_geometry}\NormalTok{(cities[cities}\OperatorTok{$}\NormalTok{CITY }\OperatorTok{==}\StringTok{ "Santa Barbara"}\NormalTok{,])}
+\NormalTok{sb_polygon <-}\StringTok{ }\KeywordTok{st_cast}\NormalTok{(sb, }\DataTypeTok{to =} \StringTok{"POLYGON"}\NormalTok{)}
+\NormalTok{osm <-}\StringTok{ }\KeywordTok{read_osm}\NormalTok{(}\KeywordTok{st_buffer}\NormalTok{(sb_polygon[}\DecValTok{2}\NormalTok{], }\DecValTok{300}\NormalTok{), }\DataTypeTok{type =} \StringTok{"osm"}\NormalTok{)  }\CommentTok{# use buffer to}
+\CommentTok{# have a bit of margin around the map}
+
+\CommentTok{# Map}
+\KeywordTok{tm_shape}\NormalTok{(osm) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{tm_rgb}\NormalTok{(}\DataTypeTok{alpha =} \FloatTok{0.7}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{tm_shape}\NormalTok{(sb_polygon[}\DecValTok{2}\NormalTok{]) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{tm_borders}\NormalTok{(}\DataTypeTok{col =} \StringTok{"black"}\NormalTok{, }\DataTypeTok{lwd =} \DecValTok{2}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{tm_shape}\NormalTok{(ROI) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{tm_borders}\NormalTok{(}\DataTypeTok{col =} \StringTok{"red"}\NormalTok{, }\DataTypeTok{lwd =} \DecValTok{3}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{tm_add_legend}\NormalTok{(}\DataTypeTok{type =} \StringTok{"line"}\NormalTok{, }\DataTypeTok{lwd =} \DecValTok{3}\NormalTok{, }\DataTypeTok{col =} \StringTok{"red"}\NormalTok{, }\DataTypeTok{labels =} \StringTok{"ROI"}\NormalTok{, }\DataTypeTok{alpha =} \DecValTok{1}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{tm_add_legend}\NormalTok{(}\DataTypeTok{type =} \StringTok{"line"}\NormalTok{, }\DataTypeTok{lwd =} \DecValTok{2}\NormalTok{, }\DataTypeTok{col =} \StringTok{"black"}\NormalTok{, }\DataTypeTok{labels =} \StringTok{"Santa Barbara"}\NormalTok{, }\DataTypeTok{alpha =} \DecValTok{1}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{tm_layout}\NormalTok{(}\DataTypeTok{legend.position =} \KeywordTok{c}\NormalTok{(}\StringTok{"left"}\NormalTok{, }\StringTok{"bottom"}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{esm_263_hw2_pdf_files/figure-latex/unnamed-chunk-3-1.pdf}
+
+There's only one layer, ``parcels'', in the parcels file so we'll read
+that in.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{parcels <-}\StringTok{ }\KeywordTok{read_sf}\NormalTok{(}\StringTok{"HW2/data_hw2/parcels.gpkg"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+The variable we're interested in is \texttt{NET\_AV}, so we can check
+what that looks like (on a log 10 scale to make it easier to read).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{ggplot}\NormalTok{(parcels) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_histogram}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =}\NormalTok{ NET_AV)) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{scale_x_log10}\NormalTok{() }\OperatorTok{+}
+\StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Net assessed value"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{esm_263_hw2_pdf_files/figure-latex/hist-1.pdf}
+
+Seems like most parcels are valued at just under a million dollars, but
+some are worth tens of millions of dollars.
+
+For the inundation scenarios, I combine all the layers into a single
+\texttt{sf} object.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Get layer names}
+\NormalTok{inund_layers <-}\StringTok{ }\KeywordTok{st_layers}\NormalTok{(}\StringTok{"HW2/data_hw2/inundation_scenarios.gpkg"}\NormalTok{)}\OperatorTok{$}\NormalTok{name}
+
+\CommentTok{# Start with one layer and then row bind the others onto it with a loop}
+\NormalTok{scenarios <-}\StringTok{ }\KeywordTok{st_read}\NormalTok{(}\StringTok{"HW2/data_hw2/inundation_scenarios.gpkg"}\NormalTok{, }\DataTypeTok{layer =}\NormalTok{ inund_layers[}\DecValTok{1}\NormalTok{], }\DataTypeTok{quiet =} \OtherTok{TRUE}\NormalTok{)}
+\ControlFlowTok{for}\NormalTok{(i }\ControlFlowTok{in} \DecValTok{2}\OperatorTok{:}\KeywordTok{length}\NormalTok{(inund_layers)) \{}
+\NormalTok{  scenarios <-}\StringTok{ }\KeywordTok{rbind}\NormalTok{(scenarios, }\KeywordTok{read_sf}\NormalTok{(}\StringTok{"HW2/data_hw2/inundation_scenarios.gpkg"}\NormalTok{, }\DataTypeTok{layer =}\NormalTok{ inund_layers[i]))}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+Let's look at one of these scenarios:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# New bounding box for the base layer}
+\NormalTok{osm_ROI <-}\StringTok{ }\KeywordTok{read_osm}\NormalTok{(}\KeywordTok{st_buffer}\NormalTok{(ROI, }\DecValTok{500}\NormalTok{), }\DataTypeTok{type =} \StringTok{"osm"}\NormalTok{)}
+
+\CommentTok{# Map}
+\KeywordTok{tm_shape}\NormalTok{(osm_ROI) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{tm_rgb}\NormalTok{(}\DataTypeTok{alpha =} \FloatTok{0.7}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{tm_shape}\NormalTok{(}\KeywordTok{st_geometry}\NormalTok{(}\KeywordTok{filter}\NormalTok{(scenarios, GRIDCODE }\OperatorTok{==}\StringTok{ }\DecValTok{10}\NormalTok{))) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{tm_fill}\NormalTok{(}\DataTypeTok{col =} \StringTok{"lightblue"}\NormalTok{, }\DataTypeTok{alpha =} \FloatTok{0.8}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{esm_263_hw2_pdf_files/figure-latex/map_scenarios-1.pdf}
+
+Seems like this represents current land area that would be inundated
+under the scenario in question.
+
+\hypertarget{spatial-join}{%
+\subsubsection{Spatial join}\label{spatial-join}}
+
+What we want here is the total value of all parcels that fall within the
+inundated area for each scenario.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Calculate the parcel areas}
+\NormalTok{parcels}\OperatorTok{$}\NormalTok{area <-}\StringTok{ }\KeywordTok{st_area}\NormalTok{(parcels) }\CommentTok{# calculate area}
+\KeywordTok{units}\NormalTok{(parcels}\OperatorTok{$}\NormalTok{area) <-}\StringTok{ }\KeywordTok{with}\NormalTok{(ud_units, ha) }\CommentTok{# convert from m^2 to ha}
+\NormalTok{parcels}\OperatorTok{$}\NormalTok{area <-}\StringTok{ }\KeywordTok{drop_units}\NormalTok{(parcels}\OperatorTok{$}\NormalTok{area) }\CommentTok{# roundabout way of doing this,}
+\CommentTok{# but it is less prone to human error to use the units package for conversions}
+
+\CommentTok{# Do the join and summarize for each of the three variables}
+\NormalTok{scenarios <-}\StringTok{ }\NormalTok{scenarios }\OperatorTok{%>%}
+\StringTok{  }\KeywordTok{st_join}\NormalTok{(parcels, }\DataTypeTok{join =}\NormalTok{ st_intersects) }\OperatorTok{%>%}
+\StringTok{  }\KeywordTok{group_by}\NormalTok{(GRIDCODE) }\OperatorTok{%>%}\StringTok{ }\CommentTok{# this is the ID of each scenario}
+\StringTok{  }\KeywordTok{summarize}\NormalTok{(}\DataTypeTok{parcel_count =} \KeywordTok{n}\NormalTok{(), }\DataTypeTok{net_value =} \KeywordTok{round}\NormalTok{(}\KeywordTok{sum}\NormalTok{(NET_AV)}\OperatorTok{/}\FloatTok{1e6}\NormalTok{, }\DecValTok{0}\NormalTok{), }\DataTypeTok{area =} \KeywordTok{round}\NormalTok{(}\KeywordTok{sum}\NormalTok{(area), }\DecValTok{0}\NormalTok{))}
+
+\CommentTok{# Rename GRIDCODE column}
+\KeywordTok{names}\NormalTok{(scenarios)[}\DecValTok{1}\NormalTok{] <-}\StringTok{ "scenario"}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{results-table}{%
+\subsubsection{Results: table}\label{results-table}}
+
+Now we can turn this into a table.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{st_drop_geometry}\NormalTok{(scenarios) }\OperatorTok{%>%}
+\StringTok{  }\KeywordTok{kbl}\NormalTok{(}\DataTypeTok{col.names =} \KeywordTok{c}\NormalTok{(}\StringTok{"Sea-level rise (m)"}\NormalTok{, }\StringTok{"Parcel count"}\NormalTok{, }\StringTok{"Net loss ($m)"}\NormalTok{, }\StringTok{"Area flooded (ha)"}\NormalTok{)) }\OperatorTok{%>%}
+\StringTok{  }\KeywordTok{kable_material}\NormalTok{(}\KeywordTok{c}\NormalTok{(}\StringTok{"striped"}\NormalTok{, }\StringTok{"hover"}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{table}[H]
+\centering
+\begin{tabular}[t]{r|r|r|r}
+\hline
+Sea-level rise (m) & Parcel count & Net loss (\$m) & Area flooded (ha)\\
+\hline
+1 & 60 & 51 & 43\\
+\hline
+2 & 89 & 88 & 108\\
+\hline
+3 & 227 & 195 & 189\\
+\hline
+4 & 620 & 566 & 301\\
+\hline
+5 & 1275 & 909 & 354\\
+\hline
+6 & 1863 & 1215 & 392\\
+\hline
+7 & 2196 & 1372 & 436\\
+\hline
+8 & 2614 & 1555 & 465\\
+\hline
+9 & 2958 & 1712 & 486\\
+\hline
+10 & 3287 & 1881 & 512\\
+\hline
+\end{tabular}
+\end{table}
+
+\hypertarget{results-map}{%
+\subsubsection{Results: map}\label{results-map}}
+
+In the map, the numbers 1 through 10 represent the number of meters of
+sea-level rise associated with each scenario and the intensity of the
+color represents the amount of property value lost.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{tmap_mode}\NormalTok{(}\StringTok{"plot"}\NormalTok{)}
+\KeywordTok{tm_shape}\NormalTok{(scenarios) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{tm_polygons}\NormalTok{(}\StringTok{"net_value"}\NormalTok{, }\DataTypeTok{title =} \StringTok{"Net loss ($m)"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{tm_facets}\NormalTok{(}\DataTypeTok{by =} \StringTok{"scenario"}\NormalTok{, }\DataTypeTok{nrow =} \DecValTok{5}\NormalTok{, }\DataTypeTok{ncol =} \DecValTok{2}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{tm_layout}\NormalTok{(}\DataTypeTok{main.title =} \StringTok{"Inundation scenarios for downtown Santa Barbara"}\NormalTok{,}
+            \DataTypeTok{legend.position =} \KeywordTok{c}\NormalTok{(}\StringTok{"right"}\NormalTok{, }\StringTok{"bottom"}\NormalTok{),}
+            \DataTypeTok{main.title.size =} \FloatTok{0.8}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{esm_263_hw2_pdf_files/figure-latex/map2-1.pdf}
+
+\end{document}
