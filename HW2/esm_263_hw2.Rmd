@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r packages, echo = FALSE, message = FALSE}
+```{r packages, include = FALSE}
 library(knitr)
 library(tidyverse)
 library(sf)
@@ -20,20 +20,27 @@ library(bookdown)
 library(scales)
 library(tictoc)
 library(RColorBrewer)
+library(kableExtra)
 ```
 
-# Loading and exploring data
+## Loading and exploring data
 
-Check what layers are in the basemap.
+Check what layers are in the basemap:
+
 ```{r}
 st_layers("HW2/data_hw2/basemap.gpkg")$name
 ```
 
-I'll include code for reading in the first layer; for the other layers, the code will not show (but it's there under the hood).
+Read them in:
 
-```{r read_data, message=TRUE, warning=FALSE}
-california <- st_read("HW2/data_hw2/basemap.gpkg", layer = "California")
+```{r read_data}
+california <- read_sf("HW2/data_hw2/basemap.gpkg", layer = "California")
+cities <- read_sf("HW2/data_hw2/basemap.gpkg", layer = "Cities")
+county <- read_sf("HW2/data_hw2/basemap.gpkg", layer = "County")
+ROI <- read_sf("HW2/data_hw2/basemap.gpkg", layer = "ROI")
+streets <- read_sf("HW2/data_hw2/basemap.gpkg", layer = "streets")
 ```
+
 For this and any other layers we can do a little exploring. For example, we can check the variable names:
 
 ```{r}
@@ -44,34 +51,26 @@ Note that in an `sf` object, there's always a column at the end called `geom`; t
 
 We can also do a quick plot to see what we have. Looks like counties.
 
-```{r}
+```{r map_CA}
 tm_shape(st_geometry(california)) +
   tm_polygons()
 ```
 
-```{r read2, include = FALSE}
-
-# Reading the rest of the layers
-cities <- st_read("HW2/data_hw2/basemap.gpkg", layer = "Cities")
-county <- st_read("HW2/data_hw2/basemap.gpkg", layer = "County")
-ROI <- st_read("HW2/data_hw2/basemap.gpkg", layer = "ROI")
-streets <- st_read("HW2/data_hw2/basemap.gpkg", layer = "streets")
-```
-
 I'm also interested to see the ROI (region of interest). In the html version of this file, you'll be able to see this against a base layer and zoom around etc, as the map view mode is interactive. We can see that we're only interested in what looks like the downtown area including the harbor.
 
-```{r}
+```{r map_ROI, message = FALSE}
 tmap_mode("view")
 tm_shape(st_geometry(ROI)) +
   tm_borders()
 ```
 
-There's only one layer, "`r st_layers("HW2/data_hw2/parcels.gpkg")$name`", in the parcels file so we'll read that in. We can check the variables names here too.
+There's only one layer, "`r st_layers("HW2/data_hw2/parcels.gpkg")$name`", in the parcels file so we'll read that in.
 
-```{r}
-parcels <- st_read("HW2/data_hw2/parcels.gpkg")
+```{r read_parcels}
+parcels <- read_sf("HW2/data_hw2/parcels.gpkg")
 names(parcels)
 ```
+
 The variable we're interested in is `NET_AV`, so we can check what that looks like (on a log 10 scale to make it easier to read).
 
 ```{r hist, message = FALSE, warning = FALSE}
@@ -90,20 +89,61 @@ For the inundation scenarios, I combine all the layers into a single `sf` object
 inund_layers <- st_layers("HW2/data_hw2/inundation_scenarios.gpkg")$name
 
 # Start with one layer and then row bind the others onto it with a loop
-scenarios <- st_read("HW2/data_hw2/inundation_scenarios.gpkg", layer = inund_layers[1])
+scenarios <- st_read("HW2/data_hw2/inundation_scenarios.gpkg", layer = inund_layers[1], quiet = TRUE)
 for(i in 2:length(inund_layers)) {
-  scenarios <- rbind(scenarios, st_read("HW2/data_hw2/inundation_scenarios.gpkg", layer = inund_layers[i]))
+  scenarios <- rbind(scenarios, read_sf("HW2/data_hw2/inundation_scenarios.gpkg", layer = inund_layers[i]))
 }
 ```
 
-Now we can access a scenario like 01 with `inund$scenario01`. Let's look at one of these scenarios:
+Let's look at one of these scenarios:
 
-```{r}
+```{r map_scenarios}
 tm_shape(st_geometry(filter(scenarios, GRIDCODE == 10))) +
-    tm_fill(col = "lightblue")
+    tm_fill(col = "lightblue") +
+  tm_shape(ROI) +
+  tm_borders()
 ```
 
 Seems like this represents current land area that would be inundated under the scenario in question.
 
-# Spatial join
+## Spatial join
 What we want here is the total value of all parcels that fall within the inundated area for each scenario.
+
+```{r spatial_join}
+
+# Calculate the parcel areas
+parcels$area <- st_area(parcels) # calculate area
+units(parcels$area) <- with(ud_units, ha) # convert from m^2 to ha
+parcels$area <- drop_units(parcels$area) # roundabout way of doing this,
+# but it is less prone to human error to use the units package for conversions
+
+# Do the join and summarize for each of the three variables
+scenarios <- scenarios %>%
+  st_join(parcels, join = st_intersects) %>%
+  group_by(GRIDCODE) %>% # this is the ID of each scenario
+  summarize(parcel_count = n(), net_value = round(sum(NET_AV)/1e6, 0), area = round(sum(area), 0))
+
+# Rename GRIDCODE column
+names(scenarios)[1] <- "scenario"
+```
+
+## Results: table
+Now we can turn this into a table.
+
+```{r}
+st_drop_geometry(scenarios) %>%
+  kbl(col.names = c("Sea-level rise (m)", "Parcel count", "Net loss ($m)", "Area flooded (ha)")) %>%
+  kable_material(c("striped", "hover"))
+```
+
+
+## Results: map
+
+```{r map2, message = FALSE}
+tmap_mode("plot")
+tm_shape(scenarios) +
+  tm_polygons("net_value", title = "Net loss ($m)") +
+  tm_facets(by = "scenario", nrow = 5, ncol = 2) +
+  tm_layout(main.title = "Inundation scenarios for downtown Santa Barbara",
+            legend.position = c("right", "bottom"))
+```
