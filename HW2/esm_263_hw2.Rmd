@@ -68,7 +68,6 @@ There's only one layer, "`r st_layers("HW2/data_hw2/parcels.gpkg")$name`", in th
 
 ```{r read_parcels}
 parcels <- read_sf("HW2/data_hw2/parcels.gpkg")
-names(parcels)
 ```
 
 The variable we're interested in is `NET_AV`, so we can check what that looks like (on a log 10 scale to make it easier to read).
@@ -138,6 +137,8 @@ st_drop_geometry(scenarios) %>%
 
 
 ## Results: map
+
+In the map, the numbers 1 through 10 represent the number of meters of sea-level rise associated with each scenario.
 
 ```{r map2, message = FALSE}
 tmap_mode("plot")
