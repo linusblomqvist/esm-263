@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
 ```
 
 ```{r load_packages, include = FALSE}
@@ -90,11 +90,18 @@ Now we can map this:
 
 ```{r}
 tm_shape(wind_sf) +
-  tm_fill(col = "wind_speed")
+  tm_fill(col = "wind_speed") +
+  tm_shape(county) +
+  tm_borders()
 ```
 This looks a lot like the map of the raster data, so that's good.
 
-Since we require wind speeds above 6.4 m/s, and there's only one wind class that meets that requirement, the suitability layer here is simply `wind_sf[7,]`.
+Since we require wind speeds above 6.4 m/s, and there's only one wind class that meets that requirement, the suitability layer here is simply `wind_sf[7,]`. To remember more easily I'll call it `wind_suitable`.
+
+```{r}
+wind_suitable <- wind_sf[7,]
+```
+
 
 ## Roads
 This requirement states that sites need to be within 7.5 km of a major road. The `roads` data comes in the form of of MULTILINESTRING (you can check this with `st_geometry_type(roads, by_geometry = FALSE))`, so we can just make a buffer around those lines. We can see the unit of measurement by, for example, getting the distance of the first linestring:
@@ -103,17 +110,145 @@ This requirement states that sites need to be within 7.5 km of a major road. The
 st_length(roads[1,])
 ```
 
-
+I'll also clip the roads buffer to the county so it doesn't unnecessarily extend outside it.
 ```{r}
-road_buffer <- st_union(st_buffer(roads, dist = 7500))
+road_suitable <- st_union(st_buffer(roads, dist = 7500))
+road_suitable <- st_intersection(road_suitable, county)
 ```
 
 We can plot this to make sure it looks reasonable.
 
-## HERE ##
 ```{r}
-tm_shape(road_buffer) +
-  tm_polygons() +
-  tm_shape()
+tm_shape(road_suitable) +
+  tm_polygons(col = "lightgreen", alpha = 0.5) +
+  tm_shape(county) +
+  tm_borders(col = "black", lwd = 2) +
+  tm_layout(main.title = "7.5 bm buffer around major roads")
+```
+
+## Airports
+
+We need to identify areas that are more than 7.5 km from an airport. This is equivalent to being inside the county but outside an airport buffer. First let's look at the airport data.
+
+```{r}
+tm_shape(county) +
+  tm_borders(col = "black", lwd = 2) +
+  tm_shape(airports) +
+  tm_polygons(col = "red")
+```
+We can see Santa Barbara Airport towards the southeast, for example. Now we'll make a buffer, and while it doesn't really matter, we might as well dissolve it into a single multipolygon.
+
+```{r}
+airport_buffer <- st_union(st_buffer(airports, dist = 7500))
+```
+
+The operation we need to find suitable areas here is `st_difference`, which, with arguments $x$ and $y$ gives us the area that is in $y$ but not in $x$.
+
+```{r}
+airports_suitable <- st_difference(county, airport_buffer)
+```
+
+We can plot this to make sure we got it right:
+
+```{r}
+tm_shape(county) +
+  tm_borders() +
+  tm_shape(airports_suitable) +
+  tm_polygons(col = "lightgreen")
+```
+
+## Urban area
+
+Similar to the above, we need to identify areas not within 1 mile of an existing urban area. Let's look at the map for urban areas.
+
+```{r}
+tm_shape(county) +
+  tm_borders() +
+  tm_shape(urban) +
+  tm_polygons(col = "red")
+```
+As for airports, we make a buffer and then take the difference between the buffer and the county.
+
+```{r}
+urban_buffer <- st_union(st_buffer(urban, dist = 1609)) # 1609 meters in a mile
+urban_suitable <- st_difference(county, urban_buffer)
+```
+
+And plot it:
+
+```{r}
+tm_shape(county) +
+  tm_borders() +
+  tm_shape(urban_suitable) +
+  tm_polygons(col = "lightgreen")
+```
+## Fire
+
+It wasn't very clear to me what to do with the fire layer so let's look at it and see what it might mean. The data are already filtered to only include areas with very high fire risk, which presumably we'll exclude from the suitable areas.
+
+```{r}
+tm_shape(county) +
+  tm_borders() +
+  tm_shape(fireLRA) +
+  tm_polygons(col = "red") +
+  tm_layout(main.title = "Fire LRA")
+```
+
+Since we want to identify areas that are suitable, I'll take the difference between the fire risk zones and the county.
+
+```{r}
+fireLRA_suitable <- st_difference(county, fireLRA)
+```
+
+For fire SRA, I'll filter for features with `HAZ_CODE = 3`.
+```{r}
+tm_shape(county) +
+  tm_borders() +
+  tm_shape(filter(fireSRA, HAZ_CODE == 3)) +
+  tm_polygons(col = "red") +
+  tm_layout(main.title = "Fire SRA")
+```
+This is a lot of area to exclude, so at this point I suspect the area suitable for wind is actually going to be relatively small. Again, take the difference.
+
+```{r}
+fireSRA_suitable <- st_difference(county, fireSRA)
+```
+
+Now we have six layers where wind is suitable by corresponding criteria. To find out where wind is suitable by all criteria, we find the intersection of all these layers.
+
+```{r}
+suitable_all <- st_intersection(wind_suitable, road_suitable, airports_suitable,
+                                urban_suitable, fireLRA_suitable, fireSRA_suitable)
+```
+
+Let's plot this.
+
+```{r}
+tm_shape(county) +
+  tm_borders() +
+  tm_shape(suitable_all) +
+  tm_fill(col = "green")
+```
+That's really not a lot of space to build on! Now we have one more thing to do, based on this part of the assignment:
+
+* The Energy Division wants a ranked list of 10 potential sites, each with at least 4 contiguous hectares
+
+I take this to mean that each suitable polygon has to be at least 4 hectares. What I have in my `suitable_all` layer is a multipolygon with only one layer, so I'll transform ("cast") this into separate polygons.
+
+```{r}
+suitable_all <- st_cast(suitable_all, "POLYGON")
+```
+
+Now let's calculate the area for each of these polygons, and create a new object with only those with the required area.
+
+```{r}
+suitable_all$area <- drop_units(st_area(suitable_all))
+suitable_4_ha <- filter(suitable_all, area >= 40000)
+```
+
+We now have a set of `r nrow(suitable_4_ha)` polygons that meet all the criteria. The Energy Division wants just 10, and ranked. Since all criteria are binary, I don't know how to rank them, so I'll just take the first ten.
+
+```{r}
+head(suitable_4_ha, 10)
 ```
 
