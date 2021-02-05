@@ -10,13 +10,16 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r load_packages, include = FALSE}
-pacman::p_load(sf, raster, stars, tmap, tidyverse, units, scales)
+pacman::p_load(sf, raster, tmap, tidyverse, units, scales)
 ```
 
 # Vector approach
 
 The R package for working with vector data is `sf`. Functions associated with this package typically start with st_.
 
+In the vector approach, I will use these layers to create a set of new features (multipolygons) that represent suitable areas by each criterion. The intersection of all these features is the set of suitable areas for wind development.
+
+## Read in data
 We're given three data files for this assignment: `basemaps.gpkg`, `inputs.gpkg`, and `Wind2002_which_one`. GeoPackage files can contain multiple layers so first I'll check what's in basemaps:
 
 ```{r basemaps_layers}
@@ -28,6 +31,89 @@ We won't need these for the analysis so I won't load them at this point.
 Let's see what's in `inputs.gpkg`:
 
 ```{r}
-st_layers("HW3/data_hw3/basemaps.gpkg")$name
+# Create a list of layer names and display them
+input_layers <- st_layers("HW3/data_hw3/inputs.gpkg")$name
+input_layers
+```
+
+We could read these into a single `sf` object using a for loop, but in this case I'll keep them as separate objects, so I'll just read them in one by one. The `read_sf` function will automatically recognize the format of the file to be read in, so we just need to specify the layer (using the list of layer names created in the previous code chunk).
+
+```{r}
+airports <- read_sf("HW3/data_hw3/inputs.gpkg", layer = input_layers[1])
+roads <- read_sf("HW3/data_hw3/inputs.gpkg", layer = input_layers[2])
+fireLRA <- read_sf("HW3/data_hw3/inputs.gpkg", layer = input_layers[3])
+parcels <- read_sf("HW3/data_hw3/inputs.gpkg", layer = input_layers[4])
+fireSRA <- read_sf("HW3/data_hw3/inputs.gpkg", layer = input_layers[5])
+county <- read_sf("HW3/data_hw3/inputs.gpkg", layer = input_layers[6])
+urban <- read_sf("HW3/data_hw3/inputs.gpkg", layer = input_layers[7])
+```
+
+The `roads` layer (along with all the other layers) has the following CRS:
+```{r}
+st_crs(roads)$input
+```
+
+Finally, we read in the wind raster data. For this we need to use the `raster` function from the `raster` package. R also has a newer package, `stars`, that handles raster data, but `raster` will do a perfectly fine job for the purposes of this assignment.
+
+```{r}
+wind_raster <- raster("HW3/data_hw3/Wind2002/Wind2002.tif")
+```
+
+## Wind
+
+We need to convert this raster layer to polygons, but first let's see what it looks like. For very simple plots, `raster` can use the `plot()` command from base R.
+
+```{r}
+tm_shape(wind_raster) +
+  tm_raster()
+```
+
+One thing to note about the wind data is that it is a categorical variable, with seven wind classes (1, 2, ..., 7). We see this from looking at the unique values in the data:
+
+```{r}
+unique(getValues(wind_raster))
+```
+
+I now convert the raster data to polygons. A couple of things to note here. I use the function `rasterToPolygons` with the option to dissolve, which gives me just one multipolygon per wind speed class. I then use `st_as_sf` to convert it to an `sf` object. I'm also going to rename the wind variable.
+
+```{r wind_raster_to_vector, message = FALSE}
+wind_sf <- st_as_sf(rasterToPolygons(wind_raster, dissolve = TRUE))
+colnames(wind_sf)[1] <- "wind_speed"
+```
+
+It doesn't hurt to check that this object has the same CRS as the ones previously loaded:
+```{r}
+st_crs(wind_sf) == st_crs(roads)
+```
+
+Now we can map this:
+
+```{r}
+tm_shape(wind_sf) +
+  tm_fill(col = "wind_speed")
+```
+This looks a lot like the map of the raster data, so that's good.
+
+Since we require wind speeds above 6.4 m/s, and there's only one wind class that meets that requirement, the suitability layer here is simply `wind_sf[7,]`.
+
+## Roads
+This requirement states that sites need to be within 7.5 km of a major road. The `roads` data comes in the form of of MULTILINESTRING (you can check this with `st_geometry_type(roads, by_geometry = FALSE))`, so we can just make a buffer around those lines. We can see the unit of measurement by, for example, getting the distance of the first linestring:
+
+```{r}
+st_length(roads[1,])
+```
+
+
+```{r}
+road_buffer <- st_union(st_buffer(roads, dist = 7500))
+```
+
+We can plot this to make sure it looks reasonable.
+
+## HERE ##
+```{r}
+tm_shape(road_buffer) +
+  tm_polygons() +
+  tm_shape()
 ```
 
