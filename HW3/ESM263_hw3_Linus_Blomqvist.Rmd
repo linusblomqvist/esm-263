@@ -200,18 +200,40 @@ Since we want to identify areas that are suitable, I'll take the difference betw
 fireLRA_suitable <- st_difference(county, fireLRA)
 ```
 
-For fire SRA, I'll filter for features with `HAZ_CODE = 3`.
+Plot to make sure SOMETHING WRONG HERE
+
 ```{r}
 tm_shape(county) +
   tm_borders() +
-  tm_shape(filter(fireSRA, HAZ_CODE == 3)) +
+  tm_shape(fireLRA_suitable) +
+  tm_polygons(col = "lightgreen") +
+  tm_layout(main.title = "Fire LRA suitable")
+```
+
+
+For fire SRA, I'll filter for features with `HAZ_CODE = 3`.
+```{r}
+fireSRA_haz3 <- filter(fireSRA, HAZ_CODE == 3)
+tm_shape(county) +
+  tm_borders() +
+  tm_shape(fireSRA_haz3) +
   tm_polygons(col = "red") +
   tm_layout(main.title = "Fire SRA")
 ```
 This is a lot of area to exclude, so at this point I suspect the area suitable for wind is actually going to be relatively small. Again, take the difference.
 
 ```{r}
-fireSRA_suitable <- st_difference(county, fireSRA)
+fireSRA_suitable <- st_difference(county, fireSRA_haz3)
+```
+
+Let's plot this to double check. SOMETHING WRONG HERE TOO
+
+```{r}
+tm_shape(county) +
+  tm_borders() +
+  tm_shape(fireSRA_suitable) +
+  tm_polygons(col = "lightgreen") +
+  tm_layout(main.title = "Fire SRA suitable")
 ```
 
 Now we have six layers where wind is suitable by corresponding criteria. To find out where wind is suitable by all criteria, we find the intersection of all these layers.
