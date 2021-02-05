@@ -1,0 +1,33 @@
+---
+title: "ESM 263: Homework 3"
+author: "Linus Blomqvist"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load_packages, include = FALSE}
+pacman::p_load(sf, raster, stars, tmap, tidyverse, units, scales)
+```
+
+# Vector approach
+
+The R package for working with vector data is `sf`. Functions associated with this package typically start with st_.
+
+We're given three data files for this assignment: `basemaps.gpkg`, `inputs.gpkg`, and `Wind2002_which_one`. GeoPackage files can contain multiple layers so first I'll check what's in basemaps:
+
+```{r basemaps_layers}
+st_layers("HW3/data_hw3/basemaps.gpkg")$name
+```
+
+We won't need these for the analysis so I won't load them at this point.
+
+Let's see what's in `inputs.gpkg`:
+
+```{r}
+st_layers("HW3/data_hw3/basemaps.gpkg")$name
+```
+
