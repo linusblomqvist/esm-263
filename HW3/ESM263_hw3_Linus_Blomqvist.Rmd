@@ -52,7 +52,7 @@ Finally, we read in the wind raster data. For this we need to use the `raster` f
 
 ```{r}
 # Read in raster
-wind_raster <- raster("HW3/data_hw3/Wind2002/Wind2002.tif")
+wind_raster <- raster("HW3/data_hw3/Wind2002.tif")
 ```
 
 ## Wind
