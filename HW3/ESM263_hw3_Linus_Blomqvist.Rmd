@@ -2,36 +2,29 @@
 title: "ESM 263: Homework 3"
 author: "Linus Blomqvist"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  html_document:
+    code_folding: show
 ---
 
 ```{r setup, include=FALSE}
+# Set knitr options: show code and do not show messages
 knitr::opts_chunk$set(echo = TRUE, message = FALSE)
 ```
 
 ```{r load_packages, include = FALSE}
+# Load packages
 pacman::p_load(sf, raster, tmap, tidyverse, units, scales)
 ```
 
-# Vector approach
-
-The R package for working with vector data is `sf`. Functions associated with this package typically start with st_.
-
-In the vector approach, I will use these layers to create a set of new features (multipolygons) that represent suitable areas by each criterion. The intersection of all these features is the set of suitable areas for wind development.
+## The vector approach
+I will use a vector approach to this assignment, where I will use the various layers to create a set of new features (multipolygons) that represent suitable areas by each criterion. The intersection of all these features is the set of suitable areas for wind development.
 
 ## Read in data
-We're given three data files for this assignment: `basemaps.gpkg`, `inputs.gpkg`, and `Wind2002_which_one`. GeoPackage files can contain multiple layers so first I'll check what's in basemaps:
-
-```{r basemaps_layers}
-st_layers("HW3/data_hw3/basemaps.gpkg")$name
-```
-
-We won't need these for the analysis so I won't load them at this point.
-
-Let's see what's in `inputs.gpkg`:
+We're given three data files for this assignment: `basemaps.gpkg`, `inputs.gpkg`, and `Wind2002_which_one`. Let's see what's in `inputs.gpkg`:
 
 ```{r}
-# Create a list of layer names and display them
+# Create a list of layer names of inputs.gpkg and display them
 input_layers <- st_layers("HW3/data_hw3/inputs.gpkg")$name
 input_layers
 ```
@@ -39,6 +32,7 @@ input_layers
 We could read these into a single `sf` object using a for loop, but in this case I'll keep them as separate objects, so I'll just read them in one by one. The `read_sf` function will automatically recognize the format of the file to be read in, so we just need to specify the layer (using the list of layer names created in the previous code chunk).
 
 ```{r}
+# Read in input layers individually
 airports <- read_sf("HW3/data_hw3/inputs.gpkg", layer = input_layers[1])
 roads <- read_sf("HW3/data_hw3/inputs.gpkg", layer = input_layers[2])
 fireLRA <- read_sf("HW3/data_hw3/inputs.gpkg", layer = input_layers[3])
@@ -50,34 +44,37 @@ urban <- read_sf("HW3/data_hw3/inputs.gpkg", layer = input_layers[7])
 
 The `roads` layer (along with all the other layers) has the following CRS:
 ```{r}
+# Check CRS
 st_crs(roads)$input
 ```
 
-Finally, we read in the wind raster data. For this we need to use the `raster` function from the `raster` package. R also has a newer package, `stars`, that handles raster data, but `raster` will do a perfectly fine job for the purposes of this assignment.
+Finally, we read in the wind raster data. For this we need to use the `raster` function from the `raster` package.
 
 ```{r}
+# Read in raster
 wind_raster <- raster("HW3/data_hw3/Wind2002/Wind2002.tif")
 ```
 
 ## Wind
 
-We need to convert this raster layer to polygons, but first let's see what it looks like. For very simple plots, `raster` can use the `plot()` command from base R.
-
-```{r}
-tm_shape(wind_raster) +
-  tm_raster()
-```
-
 One thing to note about the wind data is that it is a categorical variable, with seven wind classes (1, 2, ..., 7). We see this from looking at the unique values in the data:
 
 ```{r}
+# Unique values of the wind speed data
 unique(getValues(wind_raster))
 ```
+
+Wind speeds of at least 6.4 m/s correspond to class 3 or above.
 
 I now convert the raster data to polygons. A couple of things to note here. I use the function `rasterToPolygons` with the option to dissolve, which gives me just one multipolygon per wind speed class. I then use `st_as_sf` to convert it to an `sf` object. I'm also going to rename the wind variable.
 
 ```{r wind_raster_to_vector, message = FALSE}
-wind_sf <- st_as_sf(rasterToPolygons(wind_raster, dissolve = TRUE))
+# Convert raster data to polygons, then turn that into sf object
+wind_sf <- wind_raster %>%
+  rasterToPolygons(dissolve = TRUE) %>%
+  st_as_sf()
+
+# Rename wind speed column
 colnames(wind_sf)[1] <- "wind_speed"
 ```
 
@@ -89,57 +86,64 @@ st_crs(wind_sf) == st_crs(roads)
 Now we can map this:
 
 ```{r}
+# Map
 tm_shape(wind_sf) +
-  tm_fill(col = "wind_speed") +
-  tm_shape(county) +
-  tm_borders()
+  tm_fill(col = "wind_speed", title = "Wind speed") + # color by wind speed class
+  tm_shape(county) + # include county boundaries
+  tm_borders() +
+  tm_legend(position = c("right", "top"), legend.bg.color = "white", legend.bg.alpha = 0.7) +
+  tm_layout(main.title = "Wind speeds: vector data", frame = FALSE, main.title.size = 1.5)
 ```
-This looks a lot like the map of the raster data, so that's good.
 
-Since we require wind speeds above 6.4 m/s, and there's only one wind class that meets that requirement, the suitability layer here is simply `wind_sf[7,]`. To remember more easily I'll call it `wind_suitable`.
+Since we require wind speeds above 6.4 m/s, I filter for wind classes 3 through 7.
 
 ```{r}
-wind_suitable <- wind_sf[7,]
+wind_suitable <- wind_sf[3:7,]
 ```
 
+We can map this now.
+
+```{r}
+tm_shape(county) +
+  tm_borders(col = "black", lwd = 1.5) +
+  tm_shape(wind_suitable) +
+  tm_fill(col = "lightgreen") +
+  tm_layout(main.title = "Wind speed of at least 6.4 m/s", frame = FALSE, main.title.size = 1.5)
+```
 
 ## Roads
-This requirement states that sites need to be within 7.5 km of a major road. The `roads` data comes in the form of of MULTILINESTRING (you can check this with `st_geometry_type(roads, by_geometry = FALSE))`, so we can just make a buffer around those lines. We can see the unit of measurement by, for example, getting the distance of the first linestring:
+This requirement states that sites need to be within 7.5 km of a major road. The `roads` data comes in the form of of MULTILINESTRING (you can check this with `st_geometry_type(roads, by_geometry = FALSE))`, so we can just make a buffer around those lines. I'll also clip the roads buffer to the county so it doesn't unnecessarily extend outside it.
 
 ```{r}
-st_length(roads[1,])
-```
-
-I'll also clip the roads buffer to the county so it doesn't unnecessarily extend outside it.
-```{r}
+# 7.5 km buffer around roads
 road_suitable <- st_union(st_buffer(roads, dist = 7500))
+
+# Clip roads buffer layer to the county
 road_suitable <- st_intersection(road_suitable, county)
 ```
 
 We can plot this to make sure it looks reasonable.
 
 ```{r}
-tm_shape(road_suitable) +
-  tm_polygons(col = "lightgreen", alpha = 0.5) +
-  tm_shape(county) +
-  tm_borders(col = "black", lwd = 2) +
-  tm_layout(main.title = "7.5 bm buffer around major roads")
+tm_shape(county) +
+  tm_borders(col = "black", lwd = 1.5) +
+  tm_shape(road_suitable) +
+  tm_fill(col = "lightgreen") +
+  tm_shape(roads) +
+  tm_lines(col = "red", lwd = 0.5) +
+  tm_layout(frame = FALSE) +
+  tm_add_legend(type = "line", col = "red", labels = "Road") +
+  tm_add_legend(type = "fill", col = "lightgreen", labels = "Within 7.5 km of road")
 ```
 
 ## Airports
 
-We need to identify areas that are more than 7.5 km from an airport. This is equivalent to being inside the county but outside an airport buffer. First let's look at the airport data.
+We need to identify areas that are more than 7.5 km from an airport. This is equivalent to being inside the county but outside an airport buffer. Now we'll make a buffer and dissolve it into a single multipolygon.
 
 ```{r}
-tm_shape(county) +
-  tm_borders(col = "black", lwd = 2) +
-  tm_shape(airports) +
-  tm_polygons(col = "red")
-```
-We can see Santa Barbara Airport towards the southeast, for example. Now we'll make a buffer, and while it doesn't really matter, we might as well dissolve it into a single multipolygon.
-
-```{r}
-airport_buffer <- st_union(st_buffer(airports, dist = 7500))
+airport_buffer <- airports %>%
+  st_buffer(dist = 7500) %>%
+  st_union()
 ```
 
 The operation we need to find suitable areas here is `st_difference`, which, with arguments $x$ and $y$ gives us the area that is in $y$ but not in $x$.
@@ -152,125 +156,144 @@ We can plot this to make sure we got it right:
 
 ```{r}
 tm_shape(county) +
-  tm_borders() +
+  tm_borders(col = "black", lwd = 1.5) +
+  tm_shape(airports) +
+  tm_polygons(col = "red") +
   tm_shape(airports_suitable) +
-  tm_polygons(col = "lightgreen")
+  tm_fill(col = "lightgreen") +
+  tm_layout(frame = FALSE) +
+  tm_add_legend(type = "fill", col = "red", labels = "Airports") +
+  tm_add_legend(type = "fill", col = "lightgreen", labels = "> 7.5 km from airport")
 ```
 
 ## Urban area
 
-Similar to the above, we need to identify areas not within 1 mile of an existing urban area. Let's look at the map for urban areas.
-
-```{r}
-tm_shape(county) +
-  tm_borders() +
-  tm_shape(urban) +
-  tm_polygons(col = "red")
-```
-As for airports, we make a buffer and then take the difference between the buffer and the county.
+Similar to the above, we need to identify areas not within 1 mile of an existing urban area. As for airports, we make a buffer and then take the difference between the buffer and the county.
 
 ```{r}
 urban_buffer <- st_union(st_buffer(urban, dist = 1609)) # 1609 meters in a mile
 urban_suitable <- st_difference(county, urban_buffer)
 ```
 
-And plot it:
+And plot it as a sanity check:
 
 ```{r}
 tm_shape(county) +
-  tm_borders() +
+  tm_borders(col = "black", lwd = 1.5) +
   tm_shape(urban_suitable) +
-  tm_polygons(col = "lightgreen")
+  tm_fill(col = "lightgreen") +
+  tm_shape(urban) +
+  tm_fill(col = "red") +
+  tm_layout(frame = FALSE) +
+  tm_add_legend(type = "fill", col = "red", labels = "Urban area") +
+  tm_add_legend(type = "fill", col = "lightgreen", labels = "> 1 mile from urban area")
 ```
+
 ## Fire
 
-It wasn't very clear to me what to do with the fire layer so let's look at it and see what it might mean. The data are already filtered to only include areas with very high fire risk, which presumably we'll exclude from the suitable areas.
+For Fire LRA, the data are already filtered to only include areas with very high fire risk. For fire SRA, I'll filter for features with `HAZ_CODE = 3`. I will take the union of the two, make it a single multipolygon, and take the difference with the county.
 
 ```{r}
-tm_shape(county) +
-  tm_borders() +
-  tm_shape(fireLRA) +
-  tm_polygons(col = "red") +
-  tm_layout(main.title = "Fire LRA")
-```
 
-Since we want to identify areas that are suitable, I'll take the difference between the fire risk zones and the county.
-
-```{r}
-fireLRA_suitable <- st_difference(county, fireLRA)
-```
-
-Plot to make sure SOMETHING WRONG HERE
-
-```{r}
-tm_shape(county) +
-  tm_borders() +
-  tm_shape(fireLRA_suitable) +
-  tm_polygons(col = "lightgreen") +
-  tm_layout(main.title = "Fire LRA suitable")
-```
-
-
-For fire SRA, I'll filter for features with `HAZ_CODE = 3`.
-```{r}
+# Filter for haz code in Fire SRA
 fireSRA_haz3 <- filter(fireSRA, HAZ_CODE == 3)
-tm_shape(county) +
-  tm_borders() +
-  tm_shape(fireSRA_haz3) +
-  tm_polygons(col = "red") +
-  tm_layout(main.title = "Fire SRA")
-```
-This is a lot of area to exclude, so at this point I suspect the area suitable for wind is actually going to be relatively small. Again, take the difference.
 
-```{r}
+# Make fire LRA a single multipolygon
+fireLRA <- st_union(fireLRA)
+
+# Take difference with county
+fireLRA_suitable <- st_difference(county, fireLRA)
+
+# Make fire SRA a single multipolygon
+fireSRA_haz3 <- st_union(fireSRA_haz3)
+
+# Take difference with county
 fireSRA_suitable <- st_difference(county, fireSRA_haz3)
 ```
 
-Let's plot this to double check. SOMETHING WRONG HERE TOO
+We can now look at the two types of fire zone.
 
 ```{r}
 tm_shape(county) +
-  tm_borders() +
-  tm_shape(fireSRA_suitable) +
-  tm_polygons(col = "lightgreen") +
-  tm_layout(main.title = "Fire SRA suitable")
+  tm_borders(col = "black", lwd = 1.5) +
+  tm_shape(fireLRA) +
+  tm_fill(col = "red") +
+  tm_shape(fireSRA_haz3) +
+  tm_fill(col = "orange") +
+  tm_layout(frame = FALSE) +
+  tm_add_legend(type = "fill", col = "red", labels = "Fire LRA zones") +
+  tm_add_legend(type = "fill", col = "orange", labels = "Fire SRA zones")
 ```
 
-Now we have six layers where wind is suitable by corresponding criteria. To find out where wind is suitable by all criteria, we find the intersection of all these layers.
+## Public land
+
+We want to exclude any areas that are on public land. Public land in the `parcels` data have a USECODE that is 6000 or higher, so we can first exclude that to create a public lands layer.
+
+```{r}
+public_land <- filter(parcels, USECODE >= 6000)
+public_land <- st_union(public_land)
+```
+
+As before, we take the difference in order to find the areas that are not on public land, and make it a single multipolygon.
+
+```{r}
+public_land_suitable <- st_difference(county, public_land)
+```
+
+Aaand let's map this.
+
+```{r}
+tm_shape(county) +
+  tm_borders(col = "black", lwd = 1.5) +
+  tm_shape(public_land) +
+  tm_fill(col = "red") +
+  tm_shape(public_land_suitable) +
+  tm_fill(col = "lightgreen") +
+  tm_layout(frame = FALSE) +
+  tm_add_legend(type = "fill", col = "red", labels = "Public land") +
+  tm_add_legend(type = "fill", col = "lightgreen", labels = "Outside public land")
+```
+
+## Final list
+Now we have six layers where wind development is suitable by corresponding criteria. To find out where wind is suitable by all criteria, we find the intersection of all these layers.
 
 ```{r}
 suitable_all <- st_intersection(wind_suitable, road_suitable, airports_suitable,
-                                urban_suitable, fireLRA_suitable, fireSRA_suitable)
+                                urban_suitable, fireLRA_suitable, fireSRA_suitable,
+                                public_land_suitable)
 ```
 
-Let's plot this.
-
-```{r}
-tm_shape(county) +
-  tm_borders() +
-  tm_shape(suitable_all) +
-  tm_fill(col = "green")
-```
-That's really not a lot of space to build on! Now we have one more thing to do, based on this part of the assignment:
+Now we have one more thing to do, based on this part of the assignment:
 
 * The Energy Division wants a ranked list of 10 potential sites, each with at least 4 contiguous hectares
 
 I take this to mean that each suitable polygon has to be at least 4 hectares. What I have in my `suitable_all` layer is a multipolygon with only one layer, so I'll transform ("cast") this into separate polygons.
 
 ```{r}
+# Turn suitable areas into individual polygons
 suitable_all <- st_cast(suitable_all, "POLYGON")
 ```
 
-Now let's calculate the area for each of these polygons, and create a new object with only those with the required area.
+Now let's calculate the area for each of these polygons, and then create a list of polygons that are at least 4 hectares. Since we also want to rank the polygons, I'll select the polygons with the highest wind speed class (7), then rank by area, and pick the top ten.
 
 ```{r}
+# Calculate area of each polygon
 suitable_all$area <- drop_units(st_area(suitable_all))
-suitable_4_ha <- filter(suitable_all, area >= 40000)
+
+# Top ten
+final_list <- suitable_all %>%
+  filter(area >= 40000) %>% # at least 4 ha
+  filter(wind_speed == 7) %>% # only highest wind speed class
+  arrange(desc(area)) %>% # sort by area
+  head(10) # select the first 10
 ```
 
-We now have a set of `r nrow(suitable_4_ha)` polygons that meet all the criteria. The Energy Division wants just 10, and ranked. Since all criteria are binary, I don't know how to rank them, so I'll just take the first ten.
+Now we can have a closer look at these top 10 areas (in red), with the full extent of suitable areas in green. In this case, I'll use an interactive map where you can zoom in and out, choose your preferred base layer, etc.
 
 ```{r}
-head(suitable_4_ha, 10)
+tmap_mode("view")
+tm_shape(suitable_all) +
+  tm_fill(col = "green", alpha = 0.5) +
+  tm_shape(final_list) +
+  tm_polygons(col = "red")
 ```
-
