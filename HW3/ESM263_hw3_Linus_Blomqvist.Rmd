@@ -1,5 +1,5 @@
 ---
-title: "ESM 263: Homework 3"
+title: "ESM 263: Assignment 3"
 author: "Linus Blomqvist"
 date: "`r Sys.Date()`"
 output:
@@ -9,7 +9,7 @@ output:
 
 ```{r setup, include=FALSE}
 # Set knitr options: show code and do not show messages
-knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
 ```{r load_packages, include = FALSE}
@@ -61,7 +61,9 @@ One thing to note about the wind data is that it is a categorical variable, with
 
 ```{r}
 # Unique values of the wind speed data
-unique(getValues(wind_raster))
+wind_raster %>%
+  getValues() %>%
+  unique()
 ```
 
 Wind speeds of at least 6.4 m/s correspond to class 3 or above.
@@ -71,15 +73,14 @@ I now convert the raster data to polygons. A couple of things to note here. I us
 ```{r wind_raster_to_vector, message = FALSE}
 # Convert raster data to polygons, then turn that into sf object
 wind_sf <- wind_raster %>%
-  rasterToPolygons(dissolve = TRUE) %>%
-  st_as_sf()
-
-# Rename wind speed column
-colnames(wind_sf)[1] <- "wind_speed"
+  rasterToPolygons(dissolve = TRUE) %>% # turn raster to vector
+  st_as_sf() %>% # make it sf object
+  rename(wind_speed = Wind2002) # rename the data column
 ```
 
 It doesn't hurt to check that this object has the same CRS as the ones previously loaded:
 ```{r}
+# Check that CRS's are identical
 st_crs(wind_sf) == st_crs(roads)
 ```
 
@@ -98,7 +99,8 @@ tm_shape(wind_sf) +
 Since we require wind speeds above 6.4 m/s, I filter for wind classes 3 through 7.
 
 ```{r}
-wind_suitable <- wind_sf[3:7,]
+wind_suitable <- wind_sf %>%
+  filter(wind_speed %in% 3:7)
 ```
 
 We can map this now.
@@ -116,7 +118,9 @@ This requirement states that sites need to be within 7.5 km of a major road. The
 
 ```{r}
 # 7.5 km buffer around roads
-road_suitable <- st_union(st_buffer(roads, dist = 7500))
+road_suitable <- roads %>%
+  st_buffer(dist = 7500) %>% # first take buffer
+  st_union() # then dissolve
 
 # Clip roads buffer layer to the county
 road_suitable <- st_intersection(road_suitable, county)
@@ -142,13 +146,14 @@ We need to identify areas that are more than 7.5 km from an airport. This is equ
 
 ```{r}
 airport_buffer <- airports %>%
-  st_buffer(dist = 7500) %>%
-  st_union()
+  st_buffer(dist = 7500) %>% # buffer
+  st_union() # dissolve
 ```
 
 The operation we need to find suitable areas here is `st_difference`, which, with arguments $x$ and $y$ gives us the area that is in $y$ but not in $x$.
 
 ```{r}
+# Take difference with county
 airports_suitable <- st_difference(county, airport_buffer)
 ```
 
@@ -171,7 +176,11 @@ tm_shape(county) +
 Similar to the above, we need to identify areas not within 1 mile of an existing urban area. As for airports, we make a buffer and then take the difference between the buffer and the county.
 
 ```{r}
-urban_buffer <- st_union(st_buffer(urban, dist = 1609)) # 1609 meters in a mile
+urban_buffer <- urban %>%
+  st_buffer(dist = 1609) %>% # buffer
+  st_union() # dissolve
+
+# Take difference with county
 urban_suitable <- st_difference(county, urban_buffer)
 ```
 
@@ -195,14 +204,14 @@ For Fire LRA, the data are already filtered to only include areas with very high
 
 ```{r}
 
-# Filter for haz code in Fire SRA
-fireSRA_haz3 <- filter(fireSRA, HAZ_CODE == 3)
-
 # Make fire LRA a single multipolygon
 fireLRA <- st_union(fireLRA)
 
 # Take difference with county
 fireLRA_suitable <- st_difference(county, fireLRA)
+
+# Filter for haz code in Fire SRA
+fireSRA_haz3 <- filter(fireSRA, HAZ_CODE == 3)
 
 # Make fire SRA a single multipolygon
 fireSRA_haz3 <- st_union(fireSRA_haz3)
@@ -230,17 +239,19 @@ tm_shape(county) +
 We want to exclude any areas that are on public land. Public land in the `parcels` data have a USECODE that is 6000 or higher, so we can first exclude that to create a public lands layer.
 
 ```{r}
-public_land <- filter(parcels, USECODE >= 6000)
-public_land <- st_union(public_land)
+public_land <- parcels %>%
+  filter(USECODE >= 6000 & USECODE < 9000) %>% # pick use codes starting with 6, 7, 8
+  st_union() # dissolve
 ```
 
-As before, we take the difference in order to find the areas that are not on public land, and make it a single multipolygon.
+As before, we take the difference in order to find the areas that are not on public land.
 
 ```{r}
+# Take difference
 public_land_suitable <- st_difference(county, public_land)
 ```
 
-Aaand let's map this.
+Let's map this.
 
 ```{r}
 tm_shape(county) +
@@ -258,6 +269,7 @@ tm_shape(county) +
 Now we have six layers where wind development is suitable by corresponding criteria. To find out where wind is suitable by all criteria, we find the intersection of all these layers.
 
 ```{r}
+# Intersection of all suitable areas
 suitable_all <- st_intersection(wind_suitable, road_suitable, airports_suitable,
                                 urban_suitable, fireLRA_suitable, fireSRA_suitable,
                                 public_land_suitable)
@@ -278,7 +290,9 @@ Now let's calculate the area for each of these polygons, and then create a list 
 
 ```{r}
 # Calculate area of each polygon
-suitable_all$area <- drop_units(st_area(suitable_all))
+suitable_all$area <- suitable_all %>%
+  st_area() %>%
+  drop_units() # need to drop units to make calculations below
 
 # Top ten
 final_list <- suitable_all %>%
