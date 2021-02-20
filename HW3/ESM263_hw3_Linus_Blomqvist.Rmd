@@ -24,7 +24,7 @@ pacman::p_load(sf, raster, tmap, tidyverse, units, scales, rgdal, rgeos, sp)
 I will use a vector approach to this assignment, where I will use the various layers to create a set of new features (multipolygons) that represent suitable areas by each criterion. The intersection of all these features is the set of suitable areas for wind development.
 
 ## Read in data
-We're given three data files for this assignment: `basemaps.gpkg`, `inputs.gpkg`, and `Wind2002_which_one`. Let's see what's in `inputs.gpkg`:
+We're given three data files for this assignment: `basemaps.gpkg`, `inputs.gpkg`, and `Wind2002.tif`. Let's see what's in `inputs.gpkg`:
 
 ```{r}
 # Create a list of layer names of inputs.gpkg and display them
@@ -71,7 +71,7 @@ wind_raster %>%
 
 Wind speeds of at least 6.4 m/s correspond to class 3 or above.
 
-I now convert the raster data to polygons. A couple of things to note here. I use the function `rasterToPolygons` with the option to dissolve, which gives me just one multipolygon per wind speed class. I then use `st_as_sf` to convert it to an `sf` object. I'm also going to rename the wind variable.
+I now convert the raster data to polygons. I use the function `rasterToPolygons` with the option to dissolve, which gives me just one multipolygon per wind speed class. I then use `st_as_sf` to convert it to an `sf` object. I'm also going to rename the wind variable.
 
 ```{r wind_raster_to_vector, message = FALSE}
 # Convert raster data to polygons, then turn that into sf object
@@ -126,7 +126,7 @@ tm_shape(county) +
 ```
 
 ## Roads
-This requirement states that sites need to be within 7.5 km of a major road. The `roads` data comes in the form of of MULTILINESTRING (you can check this with `st_geometry_type(roads, by_geometry = FALSE))`, so we can just make a buffer around those lines. I'll also clip the roads buffer to the county so it doesn't unnecessarily extend outside it.
+This requirement states that sites need to be within 7.5 km of a major road. The `roads` data comes in the form of MULTILINESTRING (you can check this with `st_geometry_type(roads, by_geometry = FALSE))`, so we can just make a buffer around those lines. I'll also clip the roads buffer to the county so it doesn't unnecessarily extend outside it.
 
 ```{r}
 # 7.5 km buffer around roads
@@ -160,7 +160,7 @@ tm_shape(county) +
 
 ## Airports
 
-We need to identify areas that are more than 7.5 km from an airport. This is equivalent to being inside the county but outside an airport buffer. Now we'll make a buffer and dissolve it into a single multipolygon.
+We need to identify areas that are more than 7.5 km from an airport. This is equivalent to being inside the county but outside an airport buffer. First I'll make a buffer and dissolve it into a single multipolygon.
 
 ```{r}
 # Create buffer around airports and dissolve
@@ -169,7 +169,7 @@ airport_buffer <- airports %>%
   st_union() # dissolve
 ```
 
-The operation we need to find suitable areas here is `st_difference`, which, with arguments $x$ and $y$ gives us the area that is in $y$ but not in $x$.
+The operation we need to find suitable areas here is `st_difference` which, with arguments $x$ and $y$, gives us the area that is in $y$ but not in $x$.
 
 ```{r}
 # Take difference with county to create layer for suitable area
@@ -243,7 +243,7 @@ fire_zones <- fireSRA %>% # start with SRA
 fire_suitable <- st_difference(county, fire_zones)
 ```
 
-We can now look at the two types of fire zone.
+We can now look at the fire zones and the areas outside them.
 
 ```{r}
 tm_shape(county) +
@@ -259,12 +259,12 @@ tm_shape(county) +
                 labels = "Fire zones") +
   tm_add_legend(type = "fill", 
                 col = "lightgreen", 
-                labels = "Fire suitable")
+                labels = "Outside fire zones")
 ```
 
 ## Public land
 
-We want to exclude any areas that are on public land. Public land in the `parcels` data have a USECODE that is 6000 or higher, so we can first exclude that to create a public lands layer.
+We want to exclude any areas that are on public land. Public land in the `parcels` data have a USECODE that starts with 6, 7, or 8, so we can first exclude that to create a public lands layer.
 
 ```{r}
 # Subset for public land use codes
