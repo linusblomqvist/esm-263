@@ -7,14 +7,17 @@ output:
     code_folding: show
 ---
 
-```{r setup, include=FALSE}
+```{r setup}
 # Set knitr options: show code and do not show messages
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
-```{r load_packages, include = FALSE}
+## Preliminaries
+If you've never done GIS in R, you might need to install GDAL and RGDAL on your machine. Instructions can be found [here](https://r-spatial.github.io/sf/). For the sptial work I do below, you'll also need the `sf` package (for vector data) and the `raster` package for raster data.
+
+```{r load_packages}
 # Load packages
-pacman::p_load(sf, raster, tmap, tidyverse, units, scales)
+pacman::p_load(sf, raster, tmap, tidyverse, units, scales, rgdal, rgeos, sp)
 ```
 
 ## The vector approach
@@ -36,10 +39,10 @@ We could read these into a single `sf` object using a for loop, but in this case
 airports <- read_sf("HW3/data_hw3/inputs.gpkg", layer = input_layers[1])
 roads <- read_sf("HW3/data_hw3/inputs.gpkg", layer = input_layers[2])
 fireLRA <- read_sf("HW3/data_hw3/inputs.gpkg", layer = input_layers[3])
-parcels <- read_sf("HW3/data_hw3/inputs.gpkg", layer = input_layers[4])
 fireSRA <- read_sf("HW3/data_hw3/inputs.gpkg", layer = input_layers[5])
 county <- read_sf("HW3/data_hw3/inputs.gpkg", layer = input_layers[6])
 urban <- read_sf("HW3/data_hw3/inputs.gpkg", layer = input_layers[7])
+parcels <- read_sf("HW3/data_hw3/inputs.gpkg", layer = input_layers[4])
 ```
 
 The `roads` layer (along with all the other layers) has the following CRS:
@@ -89,16 +92,22 @@ Now we can map this:
 ```{r}
 # Map
 tm_shape(wind_sf) +
-  tm_fill(col = "wind_speed", title = "Wind speed") + # color by wind speed class
+  tm_fill(col = "wind_speed", 
+          title = "Wind speed") + # color by wind speed class
   tm_shape(county) + # include county boundaries
   tm_borders() +
-  tm_legend(position = c("right", "top"), legend.bg.color = "white", legend.bg.alpha = 0.7) +
-  tm_layout(main.title = "Wind speeds: vector data", frame = FALSE, main.title.size = 1.5)
+  tm_legend(position = c("right", "top"), 
+            legend.bg.color = "white", 
+            legend.bg.alpha = 0.7) +
+  tm_layout(main.title = "Wind speeds: vector data", 
+            frame = FALSE, 
+            main.title.size = 1.5)
 ```
 
 Since we require wind speeds above 6.4 m/s, I filter for wind classes 3 through 7.
 
 ```{r}
+# Subset to wind classes 3 to 7
 wind_suitable <- wind_sf %>%
   filter(wind_speed %in% 3:7)
 ```
@@ -107,10 +116,13 @@ We can map this now.
 
 ```{r}
 tm_shape(county) +
-  tm_borders(col = "black", lwd = 1.5) +
+  tm_borders(col = "black", 
+             lwd = 1.5) +
   tm_shape(wind_suitable) +
   tm_fill(col = "lightgreen") +
-  tm_layout(main.title = "Wind speed of at least 6.4 m/s", frame = FALSE, main.title.size = 1.5)
+  tm_layout(main.title = "Wind speed of at least 6.4 m/s", 
+            frame = FALSE, 
+            main.title.size = 1.5)
 ```
 
 ## Roads
@@ -130,14 +142,20 @@ We can plot this to make sure it looks reasonable.
 
 ```{r}
 tm_shape(county) +
-  tm_borders(col = "black", lwd = 1.5) +
+  tm_borders(col = "black", 
+             lwd = 1.5) +
   tm_shape(road_suitable) +
   tm_fill(col = "lightgreen") +
   tm_shape(roads) +
-  tm_lines(col = "red", lwd = 0.5) +
+  tm_lines(col = "red", 
+           lwd = 0.5) +
   tm_layout(frame = FALSE) +
-  tm_add_legend(type = "line", col = "red", labels = "Road") +
-  tm_add_legend(type = "fill", col = "lightgreen", labels = "Within 7.5 km of road")
+  tm_add_legend(type = "line", 
+                col = "red", 
+                labels = "Road") +
+  tm_add_legend(type = "fill", 
+                col = "lightgreen", 
+                labels = "Within 7.5 km of road")
 ```
 
 ## Airports
@@ -145,6 +163,7 @@ tm_shape(county) +
 We need to identify areas that are more than 7.5 km from an airport. This is equivalent to being inside the county but outside an airport buffer. Now we'll make a buffer and dissolve it into a single multipolygon.
 
 ```{r}
+# Create buffer around airports and dissolve
 airport_buffer <- airports %>%
   st_buffer(dist = 7500) %>% # buffer
   st_union() # dissolve
@@ -153,7 +172,7 @@ airport_buffer <- airports %>%
 The operation we need to find suitable areas here is `st_difference`, which, with arguments $x$ and $y$ gives us the area that is in $y$ but not in $x$.
 
 ```{r}
-# Take difference with county
+# Take difference with county to create layer for suitable area
 airports_suitable <- st_difference(county, airport_buffer)
 ```
 
@@ -161,14 +180,19 @@ We can plot this to make sure we got it right:
 
 ```{r}
 tm_shape(county) +
-  tm_borders(col = "black", lwd = 1.5) +
+  tm_borders(col = "black", 
+             lwd = 1.5) +
   tm_shape(airports) +
   tm_polygons(col = "red") +
   tm_shape(airports_suitable) +
   tm_fill(col = "lightgreen") +
   tm_layout(frame = FALSE) +
-  tm_add_legend(type = "fill", col = "red", labels = "Airports") +
-  tm_add_legend(type = "fill", col = "lightgreen", labels = "> 7.5 km from airport")
+  tm_add_legend(type = "fill", 
+                col = "red", 
+                labels = "Airports") +
+  tm_add_legend(type = "fill", 
+                col = "lightgreen", 
+                labels = "> 7.5 km from airport")
 ```
 
 ## Urban area
@@ -176,11 +200,12 @@ tm_shape(county) +
 Similar to the above, we need to identify areas not within 1 mile of an existing urban area. As for airports, we make a buffer and then take the difference between the buffer and the county.
 
 ```{r}
+# Create urban buffer and dissolve
 urban_buffer <- urban %>%
-  st_buffer(dist = 1609) %>% # buffer
-  st_union() # dissolve
+  st_buffer(dist = 1609) %>%
+  st_union()
 
-# Take difference with county
+# Take difference with county to create layer for suitable area
 urban_suitable <- st_difference(county, urban_buffer)
 ```
 
@@ -188,14 +213,19 @@ And plot it as a sanity check:
 
 ```{r}
 tm_shape(county) +
-  tm_borders(col = "black", lwd = 1.5) +
+  tm_borders(col = "black", 
+             lwd = 1.5) +
   tm_shape(urban_suitable) +
   tm_fill(col = "lightgreen") +
   tm_shape(urban) +
   tm_fill(col = "red") +
   tm_layout(frame = FALSE) +
-  tm_add_legend(type = "fill", col = "red", labels = "Urban area") +
-  tm_add_legend(type = "fill", col = "lightgreen", labels = "> 1 mile from urban area")
+  tm_add_legend(type = "fill", 
+                col = "red", 
+                labels = "Urban area") +
+  tm_add_legend(type = "fill", 
+                col = "lightgreen", 
+                labels = "> 1 mile from urban area")
 ```
 
 ## Fire
@@ -203,35 +233,33 @@ tm_shape(county) +
 For Fire LRA, the data are already filtered to only include areas with very high fire risk. For fire SRA, I'll filter for features with `HAZ_CODE = 3`. I will take the union of the two, make it a single multipolygon, and take the difference with the county.
 
 ```{r}
+# Create fire zone layer
+fire_zones <- fireSRA %>% # start with SRA
+  filter(HAZ_CODE == 3) %>% # subset to haz code 3
+  st_union(fireLRA) %>% # merge with LRA
+  st_union() # dissolve
 
-# Make fire LRA a single multipolygon
-fireLRA <- st_union(fireLRA)
-
-# Take difference with county
-fireLRA_suitable <- st_difference(county, fireLRA)
-
-# Filter for haz code in Fire SRA
-fireSRA_haz3 <- filter(fireSRA, HAZ_CODE == 3)
-
-# Make fire SRA a single multipolygon
-fireSRA_haz3 <- st_union(fireSRA_haz3)
-
-# Take difference with county
-fireSRA_suitable <- st_difference(county, fireSRA_haz3)
+# Take difference with county to create layer for suitable area
+fire_suitable <- st_difference(county, fire_zones)
 ```
 
 We can now look at the two types of fire zone.
 
 ```{r}
 tm_shape(county) +
-  tm_borders(col = "black", lwd = 1.5) +
-  tm_shape(fireLRA) +
+  tm_borders(col = "black", 
+             lwd = 1.5) +
+  tm_shape(fire_zones) +
   tm_fill(col = "red") +
-  tm_shape(fireSRA_haz3) +
-  tm_fill(col = "orange") +
+  tm_shape(fire_suitable) +
+  tm_fill(col = "lightgreen") +
   tm_layout(frame = FALSE) +
-  tm_add_legend(type = "fill", col = "red", labels = "Fire LRA zones") +
-  tm_add_legend(type = "fill", col = "orange", labels = "Fire SRA zones")
+  tm_add_legend(type = "fill", 
+                col = "red", 
+                labels = "Fire zones") +
+  tm_add_legend(type = "fill", 
+                col = "lightgreen", 
+                labels = "Fire suitable")
 ```
 
 ## Public land
@@ -239,6 +267,7 @@ tm_shape(county) +
 We want to exclude any areas that are on public land. Public land in the `parcels` data have a USECODE that is 6000 or higher, so we can first exclude that to create a public lands layer.
 
 ```{r}
+# Subset for public land use codes
 public_land <- parcels %>%
   filter(USECODE >= 6000 & USECODE < 9000) %>% # pick use codes starting with 6, 7, 8
   st_union() # dissolve
@@ -247,7 +276,7 @@ public_land <- parcels %>%
 As before, we take the difference in order to find the areas that are not on public land.
 
 ```{r}
-# Take difference
+# Take difference with county to create layer for suitable area
 public_land_suitable <- st_difference(county, public_land)
 ```
 
@@ -255,14 +284,19 @@ Let's map this.
 
 ```{r}
 tm_shape(county) +
-  tm_borders(col = "black", lwd = 1.5) +
+  tm_borders(col = "black", 
+             lwd = 1.5) +
   tm_shape(public_land) +
   tm_fill(col = "red") +
   tm_shape(public_land_suitable) +
   tm_fill(col = "lightgreen") +
   tm_layout(frame = FALSE) +
-  tm_add_legend(type = "fill", col = "red", labels = "Public land") +
-  tm_add_legend(type = "fill", col = "lightgreen", labels = "Outside public land")
+  tm_add_legend(type = "fill", 
+                col = "red", 
+                labels = "Public land") +
+  tm_add_legend(type = "fill", 
+                col = "lightgreen", 
+                labels = "Outside public land")
 ```
 
 ## Final list
@@ -271,8 +305,7 @@ Now we have six layers where wind development is suitable by corresponding crite
 ```{r}
 # Intersection of all suitable areas
 suitable_all <- st_intersection(wind_suitable, road_suitable, airports_suitable,
-                                urban_suitable, fireLRA_suitable, fireSRA_suitable,
-                                public_land_suitable)
+                                urban_suitable, fire_suitable, public_land_suitable)
 ```
 
 Now we have one more thing to do, based on this part of the assignment:
@@ -307,7 +340,8 @@ Now we can have a closer look at these top 10 areas (in red), with the full exte
 ```{r}
 tmap_mode("view")
 tm_shape(suitable_all) +
-  tm_fill(col = "green", alpha = 0.5) +
+  tm_fill(col = "green", 
+          alpha = 0.5) +
   tm_shape(final_list) +
   tm_polygons(col = "red")
 ```
