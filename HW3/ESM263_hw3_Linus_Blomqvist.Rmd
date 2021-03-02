@@ -14,10 +14,11 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
 ## Preliminaries
-If you've never done GIS in R, you might need to install GDAL and RGDAL on your machine. Instructions can be found [here](https://r-spatial.github.io/sf/). For the sptial work I do below, you'll also need the `sf` package (for vector data) and the `raster` package for raster data.
+If you've never done GIS in R, you might need to install GDAL and RGDAL on your machine. Instructions can be found [here](https://r-spatial.github.io/sf/). For the spatial work I do below, you'll also need the `sf` package (for vector data) and the `raster` package for raster data. These are all automatically installed and loaded in the chunk below.
 
 ```{r load_packages}
 # Load packages
+install.packages("pacman")
 pacman::p_load(sf, raster, tmap, tidyverse, units, scales, rgdal, rgeos, sp)
 ```
 
@@ -92,6 +93,7 @@ Now we can map this:
 
 ```{r}
 # Map
+tmap_mode("plot")
 tm_shape(wind_sf) +
   tm_fill(col = "wind_speed", 
           title = "Wind speed") + # color by wind speed class
