@@ -1,0 +1,231 @@
+---
+title: 'ESM 263: Assignment 4'
+author: "Linus Blomqvist"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: show
+---
+
+```{r setup, include = FALSE}
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+```{r}
+# install.packages("pacman") -- run this if you don't already have pacman on your machine
+pacman::p_load(sf, raster, tmap, tidyverse, units, scales, rgdal, rgeos, tmaptools,
+               tictoc)
+```
+
+## Load data
+
+We have the following data at our disposal, sorted under the respective data files:
+
+* DEM (raster)
+* Landsat 7 (raster)
+* Input (geopackage)
+  + Watersheds (vector)
+  + Streams (vector)
+  + Parcels (vector)
+  + ROI (vector)
+  + Observation points (vector)
+
+Let's first check the input file.
+```{r}
+(input_layers <- st_layers("HW4/data_hw4/input.gpkg")$name)
+```
+
+Reading these in below. Note: since `tmap` no longer works with sf objects of class tibble, I will read these files in with `st_read` instead of `read_sf`.
+
+```{r read_gpkg, results = "hide"}
+parcels <- st_read("HW4/data_hw4/input.gpkg", layer = input_layers[1])
+obs_points <- st_read("HW4/data_hw4/input.gpkg", layer = input_layers[2])
+ROI <- st_read("HW4/data_hw4/input.gpkg", layer = input_layers[3])
+streams <- st_read("HW4/data_hw4/input.gpkg", layer = input_layers[4])
+watersheds <- st_read("HW4/data_hw4/input.gpkg", layer = input_layers[5])
+```
+
+I'm going to plot all these to see what they look like. Here are the parcels:
+
+```{r}
+tm_shape(parcels) +
+  tm_polygons(alpha = 0.5) +
+  tm_layout(main.title = "Parcels",
+            frame = FALSE, 
+            main.title.size = 1.5,
+            main.title.position = "center")
+```
+
+And the Region of Interest and the observation points:
+
+```{r}
+tm_shape(ROI) +
+  tm_borders(lwd = 1.5) +
+  tm_shape(obs_points) +
+  tm_dots(col = "blue", size = 0.1) +
+  tm_layout(main.title = "ROI and observation points",
+            frame = FALSE, 
+            main.title.size = 1.5,
+            main.title.position = "center") +
+  tm_add_legend(type = "symbol", col = "blue", labels = "Observation points") +
+  tm_add_legend(type = "line", col = "black", labels = "ROI: Santa Barbara County")
+```
+
+And the watersheds and streams:
+
+```{r}
+tm_shape(ROI) +
+  tm_borders(col = "black") +
+  tm_shape(watersheds) +
+  tm_borders(col = "darkgreen", alpha = 0.8, lwd = 1.5) +
+  tm_shape(streams) +
+  tm_lines(col = "blue", alpha = 0.3) +
+  tm_layout(main.title = "Watersheds and streams",
+            frame = FALSE, 
+            main.title.size = 1.5,
+            main.title.position = "center") +
+  tm_add_legend(type = "line", col = "darkgreen", labels = "Watershed boundaries") +
+  tm_add_legend(type = "line", col = "blue", labels = "Streams")
+```
+
+Let's check the CRS:
+
+```{r}
+st_crs(parcels)$input
+```
+
+Now I'll read in the DEM and clip (mask) it to the ROI for convenience.
+
+```{r}
+DEM <- raster("HW4/data_hw4/dem100.tif")
+DEM <- mask(DEM, ROI)
+```
+
+Let's check the CRS:
+
+```{r}
+crs(DEM)
+```
+
+This looks the same as the CRS for the watershed data:
+
+```{r}
+st_crs(watersheds)$proj4string
+```
+
+Now I plot the DEM: 
+
+```{r}
+tm_shape(DEM) +
+  tm_raster(palette = get_brewer_pal("Greys", n = 20)) +
+  tm_shape(ROI) +
+  tm_borders() +
+  tm_legend(position = c("left", "bottom"), 
+            legend.bg.color = "white", 
+            legend.bg.alpha = 0.7)
+```
+Read in Landsat data and check names of layers:
+
+```{r}
+landsat <- stack("HW4/data_hw4/Landsat71.tif")
+names(landsat)
+```
+
+It's fun to plot multiband rasters interactively.
+
+```{r}
+tmap_mode("view")
+tm_shape(landsat) +
+  tm_raster()
+```
+
+With that, we've read in all the data.
+
+## Riparian criterion
+
+Here, the task is to calculate the percentage of each watershed that falls within 1000 ft of a stream and where $NDVI \in [0.2,0.5]$.
+
+```{r}
+
+# Create a 1000 ft (304.8 m) buffer around streams
+stream_buffer <- st_buffer(streams, 304.8)
+
+# Calculate NDVI
+NDVI <- (landsat$Landsat71.4 - landsat$Landsat71.3) / (landsat$Landsat71.4 + landsat$Landsat71.3)
+
+# Dummy for pixels with the requisite NDVI
+suitable_NDVI <- NDVI >= 0.2 & NDVI <= 0.5
+
+# Turn this into a single multipolygon
+tic()
+suitable_NDVI_polygon <- rasterToPolygons(suitable_NDVI, fun = function(x) {x == 1},
+                                          dissolve = TRUE)
+toc()
+
+
+# Create a new geometry, the intersection between watersheds and the stream buffer
+watershed_stream_buffer_int <- st_intersection(watersheds, stream_buffer)
+
+# Calculate area of each intersection
+watershed_stream_buffer_int$shed_buf_area <- st_area(watershed_stream_buffer_int)
+
+# Calculate riparian area for each watershed
+riparian_area_by_watershed <- watershed_stream_buffer_int %>%
+  st_drop_geometry() %>% 
+  select(shed_buf_area, objectid) %>%
+  group_by(objectid) %>%
+  summarize(tot_int_area = sum(shed_buf_area))
+
+# Join the riparian buffer area onto the watershed dataframe
+watersheds <- left_join(watersheds, riparian_area_by_watershed, by = "objectid")
+
+# Calculate percentage riparian
+watersheds$pct_riparian <- watersheds$tot_int_area / st_area(watersheds)
+
+# Calculate z score to normalize
+watersheds <- mutate(watersheds, z_score = (pct_riparian - mean(pct_riparian)) / sd(pct_riparian))
+
+###### NDVI
+
+
+```
+
+## Develop criterion
+
+Here I will identify land with less than 20% slope and calculate the total cost of buying that land. Note: A 20% slope corresponds to `r atan(0.02)` radians.
+
+```{r}
+# Create slope raster
+slope <- terrain(DEM, opt = "slope", unit = "radians", neighbors = 8)
+
+# Create dummies for those pixels with a slope less than 20%
+slope_sub_20 <- slope < atan(0.2)
+
+# Add up the number of developable pixels in each parcel
+parcels$developable_pixels <- slope_sub_20 %>%
+  raster::extract(parcels, fun = sum, na.rm = TRUE) %>%
+  as.vector()
+
+# If there is one or more developable pixels in a parcel, one has to buy it 
+# to prevent development, so I create a dummy for developable
+parcels$developable <- parcels$developable_pixels > 0
+
+# Attach the objectid of watersheds to each parcel
+parcels <- st_join(parcels, watersheds["objectid"]) # check if intersection
+
+# Calculate total purchasing cost by watershed
+total_purchase_cost <- parcels %>%
+  st_drop_geometry() %>%
+  filter(developable == 1) %>% # non-developable parcels cost nothing
+  group_by(objectid) %>% # objectid of the watersheds
+  summarize(tot_purchase_cost = sum(NET_AV))
+
+# Join on this purchasing cost to the watershed data
+watersheds <- left_join(watersheds, total_purchase_cost, by = "objectid")
+
+# Create z score
+watersheds <- mutate(watersheds, z_score_cost = (tot_purchase_cost - mean(tot_purchase_cost, na.rm = TRUE)) / sd(tot_purchase_cost, na.rm = TRUE))
+
+```
+
