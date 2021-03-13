@@ -121,13 +121,14 @@ Now I plot the DEM:
 
 ```{r}
 tm_shape(DEM) +
-  tm_raster(palette = get_brewer_pal("Greys", n = 20)) +
+  tm_raster(title = "Elevation") +
   tm_shape(ROI) +
   tm_borders() +
   tm_legend(position = c("left", "bottom"), 
             legend.bg.color = "white", 
             legend.bg.alpha = 0.7)
 ```
+
 Read in Landsat data and check names of layers:
 
 ```{r}
@@ -135,19 +136,20 @@ landsat <- stack("HW4/data_hw4/Landsat71.tif")
 names(landsat)
 ```
 
-It's fun to plot multiband rasters interactively.
+And plot the bands
 
 ```{r}
-tmap_mode("view")
+tmap_mode("plot")
 tm_shape(landsat) +
   tm_raster()
 ```
+
 
 With that, we've read in all the data.
 
 ## Riparian criterion
 
-Here, the task is to calculate the percentage of each watershed that falls within 1000 ft of a stream and where $NDVI \in [0.2,0.5]$. The way I do this is as follows. I create a buffer around streams. I then calculate NDVI for all pixels, and make a raster "dummy" for the appropriate NDVI range. By masking this dummy raster to the stream buffer zones, I am left with a raster with 1s for pixels that have the right NDVI and are within 1000 ft of streams, and 0s for all other pixels. I then add up the number of such pixels for each watershed and create a normalized score.
+Here, the task is to calculate the percentage of each watershed that falls within 1000 ft of a stream and where NDVI $\in [0.2,0.5]$. The way I do this is as follows. I create a buffer around streams. I then calculate NDVI for all pixels, and make a raster "dummy" for the appropriate NDVI range. By masking this dummy raster to the stream buffer zones, I am left with a raster with 1s for pixels that have the right NDVI and are within 1000 ft of streams, and 0s for all other pixels. I then add up the number of such pixels for each watershed and create a normalized score.
 
 ```{r}
 
@@ -233,7 +235,10 @@ score_table <- watersheds %>%
   arrange(desc(final_score)) %>%
   st_drop_geometry()
 
-kable(score_table, col.names = c("Object ID", "Watershed Name", "Final score"))
+kbl(score_table, caption = "Table 1: Final scores",
+      col.names = c("Object ID", "Watershed Name", "Final score")) %>%
+  kable_styling(bootstrap_options = "striped",
+                full_width = FALSE)
 ```
 
 ```{r}
