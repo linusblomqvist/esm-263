@@ -15,8 +15,11 @@ knitr::opts_chunk$set(message = FALSE, warning = FALSE)
 ```{r}
 # install.packages("pacman") -- run this if you don't already have pacman on your machine
 pacman::p_load(sf, raster, tmap, tidyverse, units, scales, rgdal, rgeos, tmaptools,
-               tictoc)
+               tictoc, kableExtra)
 ```
+
+# Intro and caveat
+There appears to be no package in R that can do viewshed analysis. There is a [package](https://www.rdocumentation.org/packages/windfarmGA/versions/2.3.0/topics/viewshed) that does something along those lines but from what I can tell it doesn't perfectly suit my purposes. The only way to do the viewshed analysis is by drawing on QGIS (there is a mention of this [here](https://geocompr.robinlovelace.net/gis.html#gis)). But that goes a bit beyond what I have time to figure out so I'm just going to use two of the criteria - develop and riparian - and create a weighted score for each watershed based on those two. The original weights were 0.50 for riparian and 0.17 for developable. To preserve the ratio between these two, I will assign weights of 0.75 for riparian and 0.25 for developable.
 
 ## Load data
 
@@ -144,7 +147,7 @@ With that, we've read in all the data.
 
 ## Riparian criterion
 
-Here, the task is to calculate the percentage of each watershed that falls within 1000 ft of a stream and where $NDVI \in [0.2,0.5]$.
+Here, the task is to calculate the percentage of each watershed that falls within 1000 ft of a stream and where $NDVI \in [0.2,0.5]$. The way I do this is as follows. I create a buffer around streams. I then calculate NDVI for all pixels, and make a raster "dummy" for the appropriate NDVI range. By masking this dummy raster to the stream buffer zones, I am left with a raster with 1s for pixels that have the right NDVI and are within 1000 ft of streams, and 0s for all other pixels. I then add up the number of such pixels for each watershed and create a normalized score.
 
 ```{r}
 
@@ -157,62 +160,44 @@ NDVI <- (landsat$Landsat71.4 - landsat$Landsat71.3) / (landsat$Landsat71.4 + lan
 # Dummy for pixels with the requisite NDVI
 suitable_NDVI <- NDVI >= 0.2 & NDVI <= 0.5
 
-# Turn this into a single multipolygon
-tic()
-suitable_NDVI_polygon <- rasterToPolygons(suitable_NDVI, fun = function(x) {x == 1},
-                                          dissolve = TRUE)
-toc()
+# Limit the NDVI raster to the stream buffer zones
+NDVI_and_riparian <- mask(x = suitable_NDVI, mask = stream_buffer)
 
+# Calculate the number of pixels meeting both criteria, by watershed
+watersheds$riparian <- NDVI_and_riparian %>%
+  raster::extract(watersheds, fun = sum, na.rm = TRUE) %>%
+  as.vector()
 
-# Create a new geometry, the intersection between watersheds and the stream buffer
-watershed_stream_buffer_int <- st_intersection(watersheds, stream_buffer)
-
-# Calculate area of each intersection
-watershed_stream_buffer_int$shed_buf_area <- st_area(watershed_stream_buffer_int)
-
-# Calculate riparian area for each watershed
-riparian_area_by_watershed <- watershed_stream_buffer_int %>%
-  st_drop_geometry() %>% 
-  select(shed_buf_area, objectid) %>%
-  group_by(objectid) %>%
-  summarize(tot_int_area = sum(shed_buf_area))
-
-# Join the riparian buffer area onto the watershed dataframe
-watersheds <- left_join(watersheds, riparian_area_by_watershed, by = "objectid")
-
-# Calculate percentage riparian
-watersheds$pct_riparian <- watersheds$tot_int_area / st_area(watersheds)
-
-# Calculate z score to normalize
-watersheds <- mutate(watersheds, z_score = (pct_riparian - mean(pct_riparian)) / sd(pct_riparian))
-
-###### NDVI
-
+# Normalize
+watersheds <- mutate(watersheds, z_score_riparian = (riparian - mean(riparian)) / sd(riparian))
 
 ```
 
 ## Develop criterion
 
-Here I will identify land with less than 20% slope and calculate the total cost of buying that land. Note: A 20% slope corresponds to `r atan(0.02)` radians.
+My reasoning for the develop criterion is as follows. You can't buy part of a parcel, you have to buy the whole thing. So if a parcel has any part that is developable, you need to buy the whole parcel to prevent that development. Below, I first identify the pixels with slope less than 20%. I then deem developable a parcel that has at least one developable pixel and that is not public. By attaching the objectid of the watersheds to each parcel, I can group the parcels by watershed and sum up the cost of all the developable parcels in each watershed. I then join this to the watershed dataframe, and create a normalized score for each watershed.
 
 ```{r}
+
 # Create slope raster
 slope <- terrain(DEM, opt = "slope", unit = "radians", neighbors = 8)
 
 # Create dummies for those pixels with a slope less than 20%
+# Note: A 20% slope corresponds to `r atan(0.02)` radians.
 slope_sub_20 <- slope < atan(0.2)
 
 # Add up the number of developable pixels in each parcel
-parcels$developable_pixels <- slope_sub_20 %>%
+parcels$suitable_slope <- slope_sub_20 %>%
   raster::extract(parcels, fun = sum, na.rm = TRUE) %>%
   as.vector()
 
 # If there is one or more developable pixels in a parcel, one has to buy it 
 # to prevent development, so I create a dummy for developable
-parcels$developable <- parcels$developable_pixels > 0
+# In this dummy I also exclude all public parcels
+parcels$developable <- parcels$suitable_slope > 0 & is.na(parcels$NONTAXCODE)
 
 # Attach the objectid of watersheds to each parcel
-parcels <- st_join(parcels, watersheds["objectid"]) # check if intersection
+parcels <- st_join(parcels, watersheds["objectid"])
 
 # Calculate total purchasing cost by watershed
 total_purchase_cost <- parcels %>%
@@ -224,8 +209,47 @@ total_purchase_cost <- parcels %>%
 # Join on this purchasing cost to the watershed data
 watersheds <- left_join(watersheds, total_purchase_cost, by = "objectid")
 
-# Create z score
-watersheds <- mutate(watersheds, z_score_cost = (tot_purchase_cost - mean(tot_purchase_cost, na.rm = TRUE)) / sd(tot_purchase_cost, na.rm = TRUE))
+# Those that have NA have no developable land so the cost is 0
+watersheds$tot_purchase_cost[is.na(watersheds$tot_purchase_cost)] <- 0
 
+# Create z score
+watersheds <- mutate(watersheds, z_score_develop = (tot_purchase_cost - mean(tot_purchase_cost, na.rm = TRUE)) / sd(tot_purchase_cost, na.rm = TRUE))
+
+```
+
+# MCA
+
+Each watershed now gets a total weighted score, as follows. I take the negative of the purchase cost since a higher value is worse.
+
+```{r}
+watersheds$final_score <- (watersheds$z_score_riparian * 0.75) + 
+  (-watersheds$z_score_develop * 0.25)
+```
+
+
+```{r}
+score_table <- watersheds %>%
+  select(objectid, cdfspwname, final_score) %>%
+  arrange(desc(final_score)) %>%
+  st_drop_geometry()
+
+kable(score_table, col.names = c("Object ID", "Watershed Name", "Final score"))
+```
+
+```{r}
+tmap_mode("plot")
+tm_shape(watersheds) +
+  tm_fill(col = "final_score",
+          title = "Final score",
+          palette = "Spectral") +
+  tm_layout(main.title = "Final scores for watersheds",
+            main.title.position = c("center", "top"),
+            legend.bg.color = "white") +
+  tm_credits("The final score for each watershed is the weighted sum of the 
+normalized scores for the amount of riparian land in the watershed 
+and the (negative of) the cost of avoiding development.",
+             position = c("center", "bottom"),
+              bg.color = "white",
+              bg.alpha = 0.7)
 ```
 
